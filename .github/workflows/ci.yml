@@ -1,0 +1,120 @@
+name: CI/CD
+
+on:
+  push:
+    branches: master
+  pull_request:
+    branches: master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: pwsh
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  Build:
+    outputs:
+      deploy: ${{ steps.set_output.outputs.deploy }}
+      release: ${{ steps.set_output.outputs.release }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        show-progress: false
+        fetch-depth: 0
+    - name: Setup dotnet (pinned)
+      uses: actions/setup-dotnet@v5
+      with:
+        global-json-file: ./global.json
+    - name: Build
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $PSNativeCommandUseErrorActionPreference = $true
+        dotnet restore
+        dotnet build ./src/PSReflector.csproj -c Debug --no-restore --no-dependencies
+        dotnet build ./src/PSReflector.csproj -c Release --no-restore --no-dependencies
+        dotnet pack ./src/PSReflector.csproj -c Release --no-build -o ./Packages
+    - name: Upload Packages
+      uses: actions/upload-artifact@v7
+      with:
+        name: Packages
+        path: ./Packages/
+    - name: Set Deployment and Release Outputs
+      id: set_output
+      if: ${{ github.event_name == 'push' }}
+      run: |
+        [string] $semver = '^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+        $docElement = (select-xml -Path ./Directory.Build.props -XPath "/*").Node
+        $version = (select-xml -Xml $docElement -XPath "//ns:Version" -Namespace @{ ns = $docElement.NamespaceURI }).Node.InnerText
+        if ($version -cnotmatch $semver)
+        {
+            throw "Invalid Version property."
+        }
+        # TODO We might allow tags starting with 'rc' or 'pre' to be published to Nuget.
+        if ($Matches.prerelease) {
+          $deploy = "Azure"
+          $release = ""
+        }
+        else {
+          $deploy = "Nuget"
+          $release = "v$version"
+        }
+        Write-Host "Version: $version, Deploy: $deploy, Release: $release"
+        echo "deploy=$deploy" >>$env:GITHUB_OUTPUT
+        echo "release=$release" >>$env:GITHUB_OUTPUT
+
+  Deploy:
+    needs: Build
+    if: ${{ needs.Build.outputs.deploy != '' && github.event.inputs.deploy != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Packages
+      uses: actions/download-artifact@v7
+      with:
+        name: Packages
+        path: ./Packages/
+    - name: Install Azure Credential Provider
+      run: Invoke-Expression "& { $(Invoke-RestMethod https://aka.ms/install-artifacts-credprovider.ps1) }"
+    - name: Deploy to Azure
+      env:
+        VSS_NUGET_EXTERNAL_FEED_ENDPOINTS: '{"endpointCredentials": [{"endpoint":"https://pkgs.dev.azure.com/mawosoft-de/public/_packaging/public/nuget/v3/index.json", "password":"${{ secrets.AZURE_PACKAGE_PAT }}"}]}'
+      run: dotnet nuget push ./Packages/*.nupkg --skip-duplicate --source https://pkgs.dev.azure.com/mawosoft-de/public/_packaging/public/nuget/v3/index.json --api-key az
+
+  Publish:
+    needs: Build
+    if: ${{ needs.Build.outputs.deploy == 'Nuget' && github.event.inputs.deploy != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Packages
+      uses: actions/download-artifact@v7
+      with:
+        name: Packages
+        path: ./Packages/
+    - name: Publish to Nuget
+      run: dotnet nuget push ./Packages/*.nupkg --skip-duplicate --source https://www.powershellgallery.com/api/v2/package/ --api-key ${{ secrets.PSGALLERY_API_KEY }}
+
+  Release:
+    needs: Build
+    if: ${{ needs.Build.outputs.release != '' && github.event.inputs.release != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        show-progress: false
+        fetch-depth: 1
+    - name: Create GitHub release
+      # TODO release notes
+      uses: softprops/action-gh-release@v3
+      with:
+        tag_name: ${{ needs.Build.outputs.release }}
+        generate_release_notes: false # false is default. Seems to draw from PRs only.

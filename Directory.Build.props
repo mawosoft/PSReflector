@@ -1,0 +1,66 @@
+<Project>
+
+  <PropertyGroup Condition="'$(CI)' == ''">
+    <CI>false</CI>
+    <!-- GitHub already defines CI -->
+    <CI Condition="'$(TF_BUILD)' == 'true' or '$(APPVEYOR)' != ''">true</CI>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ContinuousIntegrationBuild>$(CI)</ContinuousIntegrationBuild>
+    <Deterministic>$(CI)</Deterministic>
+    <TreatWarningsAsErrors>$(CI)</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
+    <MSBuildEnableWorkloadResolver>false</MSBuildEnableWorkloadResolver>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Needed for IDE0005 in cmdline builds with dotnet SDK >= 7.0.400. See https://github.com/dotnet/roslyn/issues/41640
+         CS1591: Missing XML comment -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <CopyDocumentationFileToOutputDirectory>false</CopyDocumentationFileToOutputDirectory>
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <!-- Enable all latest analyzers and all warning waves
+         See https://github.com/dotnet/roslyn/issues/63036 -->
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <AnalysisLevelStyle>all</AnalysisLevelStyle>
+    <WarningLevel>9999</WarningLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Condition = "$(DefineConstants.Contains('DISASMO'))">
+    <!-- TODO net6.0 or newer must be included in TFMs for Disasmo to work. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)common.globalconfig" />
+    <!-- For temporary local use only -->
+    <!-- <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)escalate.globalconfig" /> -->
+  </ItemGroup>
+
+  <PropertyGroup>
+    <Authors>Matthias Wolf, Mawosoft</Authors>
+    <Company>$(Authors)</Company>
+    <Product>PSReflector</Product>
+    <Copyright>Copyright (c) 2026 Matthias Wolf, Mawosoft</Copyright>
+    <Version>1.0.0-dev</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PSModuleName>PSReflector</PSModuleName>
+  </PropertyGroup>
+
+</Project>

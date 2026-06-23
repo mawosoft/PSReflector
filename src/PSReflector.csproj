@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright (c) Matthias Wolf, Mawosoft.
+-->
+<Project>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>Mawosoft.PSReflector</RootNamespace>
+    <AssemblyName>$(RootNamespace)</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>Powershell module to declaratively expose non-public type members.</Description>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/mawosoft/PSReflector</RepositoryUrl>
+    <DebugType>embedded</DebugType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <EnablePackageValidation>false</EnablePackageValidation>
+  </PropertyGroup>
+
+  <PropertyGroup>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PowerShellStandard.Library" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!--
+    ============================================================
+
+    Handle PowerShell-specific files, e.g. module manifest
+
+    Use the PSModuleManifest item to specify the module manifest template.
+    The template should contain the placeholders @ModuleVersion@ and @Prerelease@ to be
+    replaced with a PS-compatible variant of the $(Version) property. The resulting manifest
+    will be written to the $(IntermediateOutputPath)
+
+    Use the PSAdditionalFiles item to include any other files like type or format definitions
+    that should be part of the PS module.
+    ============================================================
+  -->
+
+  <PropertyGroup>
+    <!-- This is used as the source for Pack via Publish-Module and therefore must match the module name. -->
+    <PublishDirName>$(PSModuleName)</PublishDirName>
+    <!-- Forwarded as switch parameter -->
+    <SkipAutomaticTags Condition="'$(SkipAutomaticTags)' == ''">true</SkipAutomaticTags>
+    <SkipAutomaticTags Condition="'$(SkipAutomaticTags)' != 'true'">false</SkipAutomaticTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PSModuleManifest Include="$(PSModuleName).psd1" />
+    <PSAdditionalFiles Include="$(PSModuleName).psm1" />
+    <PSAdditionalFiles Include="*.ps1xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PSModuleManifest Update="@(PSModuleManifest)">
+      <SourceItemSpec>%(Identity)</SourceItemSpec>
+    </PSModuleManifest>
+    <PSAdditionalFiles Remove="@(PSModuleManifest)" />
+    <PSAdditionalFiles Include="@(PSModuleManifest->'$(IntermediateOutputPath)%(FileName)%(Extension)')">
+      <TargetPath>%(FileName)%(Extension)</TargetPath>
+      <Link>(hidden)</Link>
+      <Visible>false</Visible>
+      <!-- Alternatively:
+      <Link>%(SourceItemSpec) (generated)</Link>
+      <DependentUpon>%(SourceItemSpec)</DependentUpon>
+      -->
+    </PSAdditionalFiles>
+    <PSAdditionalFiles Update="@(PSAdditionalFiles)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Pack>true</Pack>
+    </PSAdditionalFiles>
+    <None Remove="@(PSAdditionalFiles)" />
+    <None Include="@(PSAdditionalFiles)" />
+  </ItemGroup>
+
+  <Target Name="UpdatePSModuleManifest"
+          Inputs="@(PSModuleManifest);@(IntermediateAssembly)"
+          Outputs="$(IntermediateOutputPath)%(PSModuleManifest.FileName)%(PSModuleManifest.Extension)"
+          AfterTargets="Compile"
+          DependsOnTargets="Compile"
+          Condition="Exists('@(IntermediateAssembly)')">
+    <PropertyGroup>
+      <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp;
+        '../build/updatePSModuleManifestVersion.ps1'
+          -Path '%(PSModuleManifest.FullPath)'
+          -Destination '$(IntermediateOutputPath)'
+          -Version '$(Version)'
+        &quot;
+      </_command>
+    </PropertyGroup>
+    <Exec Command="$(_command.Replace('%0D%0A', ' ').Replace('%0A', ' '))"
+          WorkingDirectory = "$(MSBuildProjectDirectory)"
+          StandardErrorImportance="high"
+          StandardOutputImportance="low" />
+    <ItemGroup>
+      <FileWrites Include="$(IntermediateOutputPath)%(PSModuleManifest.FileName)%(PSModuleManifest.Extension)" />
+    </ItemGroup>
+  </Target>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <!--
+    ============================================================
+
+    Pack
+
+    Overwritten to generate a PSGallery-compatible NuGet package.
+    TODO (Pack)
+    - Inputs/Outputs to avoid running this every time.
+    ============================================================
+  -->
+
+  <Target Name="Pack"
+          DependsOnTargets="Publish">
+    <PropertyGroup>
+      <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp;
+        '../build/packPSModule.ps1'
+          -Path '$(PublishDir)'
+          -Destination '$(PackageOutputPath)'
+          -SkipAutomaticTags:$$(SkipAutomaticTags)
+        &quot;
+      </_command>
+    </PropertyGroup>
+    <Exec Command="$(_command.Replace('%0D%0A', ' ').Replace('%0A', ' '))"
+          WorkingDirectory = "$(MSBuildProjectDirectory)"
+          StandardErrorImportance="high"
+          StandardOutputImportance="low" />
+  </Target>
+
+</Project>
