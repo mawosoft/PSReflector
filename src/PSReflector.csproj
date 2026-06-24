@@ -129,6 +129,7 @@
         &quot;
       </_command>
     </PropertyGroup>
+    <MakeDir Directories="$(PackageOutputPath)" />
     <Exec Command="$(_command.Replace('%0D%0A', ' ').Replace('%0A', ' '))"
           WorkingDirectory = "$(MSBuildProjectDirectory)"
           StandardErrorImportance="high"
