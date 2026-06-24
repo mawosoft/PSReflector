@@ -46,11 +46,8 @@
   -->
 
   <PropertyGroup>
-    <!-- This is used as the source for Pack via Publish-Module and therefore must match the module name. -->
+    <!-- This is used as the source for Pack via Compress-PSResource and therefore must match the module name. -->
     <PublishDirName>$(PSModuleName)</PublishDirName>
-    <!-- Forwarded as switch parameter -->
-    <SkipAutomaticTags Condition="'$(SkipAutomaticTags)' == ''">true</SkipAutomaticTags>
-    <SkipAutomaticTags Condition="'$(SkipAutomaticTags)' != 'true'">false</SkipAutomaticTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -124,11 +121,11 @@
     <PropertyGroup>
       <_dollar>\$</_dollar>
       <_dollar Condition="$([MSBuild]::IsOSPlatform('Windows'))">$</_dollar>
-      <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp;
-        '../build/packPSModule.ps1'
+      <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;
+        $(_dollar)ErrorActionPreference = 'Stop';
+        Compress-PSResource
           -Path '$(PublishDir)'
-          -Destination '$(PackageOutputPath)'
-          -SkipAutomaticTags:$(_dollar)$(SkipAutomaticTags)
+          -DestinationPath '$(PackageOutputPath)'
         &quot;
       </_command>
     </PropertyGroup>
