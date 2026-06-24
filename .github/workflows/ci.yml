@@ -39,7 +39,7 @@ jobs:
       run: |
         $ErrorActionPreference = 'Stop'
         $PSNativeCommandUseErrorActionPreference = $true
-        dotnet restore
+        dotnet restore ./src/PSReflector.csproj
         dotnet build ./src/PSReflector.csproj -c Debug --no-restore --no-dependencies
         dotnet build ./src/PSReflector.csproj -c Release --no-restore --no-dependencies
         dotnet pack ./src/PSReflector.csproj -c Release --no-build -o ./Packages
@@ -74,11 +74,11 @@ jobs:
 
   Deploy:
     needs: Build
-    if: ${{ needs.Build.outputs.deploy != '' && github.event.inputs.deploy != 'false' }}
+    if: ${{ needs.Build.outputs.deploy != '' }}
     runs-on: ubuntu-latest
     steps:
     - name: Download Packages
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: Packages
         path: ./Packages/
@@ -91,11 +91,11 @@ jobs:
 
   Publish:
     needs: Build
-    if: ${{ needs.Build.outputs.deploy == 'Nuget' && github.event.inputs.deploy != 'false' }}
+    if: ${{ needs.Build.outputs.deploy == 'Nuget' }}
     runs-on: ubuntu-latest
     steps:
     - name: Download Packages
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: Packages
         path: ./Packages/
@@ -104,7 +104,7 @@ jobs:
 
   Release:
     needs: Build
-    if: ${{ needs.Build.outputs.release != '' && github.event.inputs.release != 'false' }}
+    if: ${{ needs.Build.outputs.release != '' }}
     runs-on: ubuntu-latest
     steps:
     - name: Checkout

@@ -19,6 +19,7 @@
     <DebugType>embedded</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
     <EnablePackageValidation>false</EnablePackageValidation>
   </PropertyGroup>
 
@@ -121,11 +122,13 @@
   <Target Name="Pack"
           DependsOnTargets="Publish">
     <PropertyGroup>
+      <_dollar>\$</_dollar>
+      <_dollar Condition="$([MSBuild]::IsOSPlatform('Windows'))">$</_dollar>
       <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp;
         '../build/packPSModule.ps1'
           -Path '$(PublishDir)'
           -Destination '$(PackageOutputPath)'
-          -SkipAutomaticTags:$$(SkipAutomaticTags)
+          -SkipAutomaticTags:$(_dollar)$(SkipAutomaticTags)
         &quot;
       </_command>
     </PropertyGroup>
