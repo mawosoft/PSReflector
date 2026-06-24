@@ -26,6 +26,20 @@ public class Reflector
     public void AddType(Type type, MemberDescriptor[] members) => AddType(type, Type.EmptyTypes, members);
 
     [SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "False positive for 'members'.")]
+    public void AddType(Type type, string[] members)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        if (members is null || members.Length == 0) ThrowMembersArgumentException();
+        var descriptors = new MemberDescriptor[members.Length];
+        for (int i = 0; i < descriptors.Length; i++)
+        {
+            if (string.IsNullOrEmpty(members[i])) ThrowMembersArgumentException();
+            descriptors[i] = new MemberDescriptor { Name = members[i] };
+        }
+        AddType(type, Type.EmptyTypes, descriptors);
+    }
+
+    [SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "False positive for 'members'.")]
     public void AddType(Type baseType, Type[] derivedTypes, MemberDescriptor[] members)
     {
         ArgumentNullException.ThrowIfNull(baseType);
@@ -57,8 +71,6 @@ public class Reflector
         }
         _types[baseType] = typeInfo;
         foreach (var type in derivedTypes) _types[type] = typeInfo;
-
-        [DoesNotReturn] static void ThrowMembersArgumentException() => throw new ArgumentException(null, nameof(members));
     }
 
     public object? Wrap(object? obj)
@@ -219,6 +231,9 @@ public class Reflector
         }
         return found;
     }
+
+    [DoesNotReturn]
+    private static void ThrowMembersArgumentException() => throw new ArgumentException(null, "members");
 
     private sealed class TypeDesriptor
     {
