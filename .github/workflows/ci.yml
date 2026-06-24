@@ -31,7 +31,7 @@ jobs:
       with:
         show-progress: false
         fetch-depth: 0
-    - name: Setup dotnet (pinned)
+    - name: Setup dotnet
       uses: actions/setup-dotnet@v5
       with:
         global-json-file: ./global.json
