@@ -19,6 +19,7 @@
     <DebugType>embedded</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
     <EnablePackageValidation>false</EnablePackageValidation>
   </PropertyGroup>
 
@@ -45,11 +46,8 @@
   -->
 
   <PropertyGroup>
-    <!-- This is used as the source for Pack via Publish-Module and therefore must match the module name. -->
+    <!-- This is used as the source for Pack via Compress-PSResource and therefore must match the module name. -->
     <PublishDirName>$(PSModuleName)</PublishDirName>
-    <!-- Forwarded as switch parameter -->
-    <SkipAutomaticTags Condition="'$(SkipAutomaticTags)' == ''">true</SkipAutomaticTags>
-    <SkipAutomaticTags Condition="'$(SkipAutomaticTags)' != 'true'">false</SkipAutomaticTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -121,14 +119,17 @@
   <Target Name="Pack"
           DependsOnTargets="Publish">
     <PropertyGroup>
-      <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp;
-        '../build/packPSModule.ps1'
+      <_dollar>\$</_dollar>
+      <_dollar Condition="$([MSBuild]::IsOSPlatform('Windows'))">$</_dollar>
+      <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;
+        $(_dollar)ErrorActionPreference = 'Stop';
+        Compress-PSResource
           -Path '$(PublishDir)'
-          -Destination '$(PackageOutputPath)'
-          -SkipAutomaticTags:$$(SkipAutomaticTags)
+          -DestinationPath '$(PackageOutputPath)'
         &quot;
       </_command>
     </PropertyGroup>
+    <MakeDir Directories="$(PackageOutputPath)" />
     <Exec Command="$(_command.Replace('%0D%0A', ' ').Replace('%0A', ' '))"
           WorkingDirectory = "$(MSBuildProjectDirectory)"
           StandardErrorImportance="high"
