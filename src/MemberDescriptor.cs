@@ -59,22 +59,4 @@ public sealed class MemberDescriptor
 
     /// <summary>Expose properties and fields as writable. Default is read-only.</summary>
     public bool CanWrite { get; set; }
-
-    public MemberDescriptor() { }
-
-    public MemberDescriptor(string name)
-    {
-        Name = name;
-    }
-
-    public MemberDescriptor(string name, MemberTypes memberType)
-    {
-        Name = name;
-        MemberType = memberType;
-    }
-
-    public MemberDescriptor(MemberInfo memberInfo)
-    {
-        MemberInfo = memberInfo;
-    }
 }
