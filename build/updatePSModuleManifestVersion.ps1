@@ -2,8 +2,7 @@
 
 <#
 .SYNOPSIS
-    Updates the module manifest with PowerShell-compatible version info derived
-    from given SemVer2 version.
+    Updates the module manifest with PowerShell-compatible version info derived from given SemVer2 version.
 
 .DESCRIPTION
     The module manifest template must contain the placeholders @ModuleVersion@ and @Prerelease@
@@ -15,11 +14,9 @@
     The manifest content or the proper placement of the placeholders is *not* validated.
 #>
 
-#Requires -Version 7
-
 using namespace System
 
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding = $false)]
 param(
     # Path of the manifest file to use as a template.
     [Parameter(Mandatory, Position = 0)]
@@ -57,8 +54,8 @@ if (Test-Path $Destination -PathType Container) {
 
 [string]$manifest = Get-Content $Path -Raw
 
-if (-not $manifest.Contains($moduleversionPattern, [StringComparison]::OrdinalIgnoreCase) -or
-    -not $manifest.Contains($prereleasePattern, [StringComparison]::OrdinalIgnoreCase)) {
+if ($manifest.IndexOf($moduleversionPattern, [StringComparison]::OrdinalIgnoreCase) -lt 0 -or
+    $manifest.IndexOf($prereleasePattern, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
     throw 'Placeholders not found.'
     return
 }

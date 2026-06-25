@@ -23,9 +23,6 @@
     <EnablePackageValidation>false</EnablePackageValidation>
   </PropertyGroup>
 
-  <PropertyGroup>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="PowerShellStandard.Library" PrivateAssets="All" />
   </ItemGroup>
@@ -119,13 +116,11 @@
   <Target Name="Pack"
           DependsOnTargets="Publish">
     <PropertyGroup>
-      <_dollar>\$</_dollar>
-      <_dollar Condition="$([MSBuild]::IsOSPlatform('Windows'))">$</_dollar>
       <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;
-        $(_dollar)ErrorActionPreference = 'Stop';
         Compress-PSResource
           -Path '$(PublishDir)'
           -DestinationPath '$(PackageOutputPath)'
+          -ErrorAction Stop
         &quot;
       </_command>
     </PropertyGroup>
