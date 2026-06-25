@@ -186,8 +186,8 @@ public class Reflector
         var o = obj is PSObject pso ? pso.BaseObject : obj;
         if (o is null) return obj;
         if (o is not Type type) type = o.GetType();
-        if (!(asType?.IsAssignableFrom(type) ?? false)) throw new ArgumentException(null, nameof(asType));
-        if (!_types.TryGetValue(asType, out var typeInfo)) return obj;
+        if (!(asType?.IsAssignableFrom(type) ?? false)) throw new ArgumentException(null, nameof(obj));
+        if (!_types.TryGetValue(asType, out var typeInfo)) throw new ArgumentException(null, nameof(asType));
         return WrapObject(o, typeInfo);
     }
 
