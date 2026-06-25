@@ -17,12 +17,10 @@ public sealed class PSBaseMethod : PSMethodInfo
     private string? _definition;
 
     public override Collection<string> OverloadDefinitions => [ToString()];
-
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
-
     public override string TypeNameOfValue => typeof(PSBaseMethod).FullName!;
-
-    public override PSMemberInfo Copy() => new PSBaseMethod(_methodInfo, Name, _isStatic, _definition, _reflector);
+    public override PSMemberInfo Copy()
+        => new PSBaseMethod(_methodInfo, Name, _isStatic, _definition, _reflector);
 
     public override object? Invoke(params object[] arguments)
     {

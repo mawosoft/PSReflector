@@ -16,11 +16,8 @@ public sealed class PSBaseConstructor : PSMethodInfo
     private string? _definition;
 
     public override Collection<string> OverloadDefinitions => [ToString()];
-
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
-
     public override string TypeNameOfValue => typeof(PSBaseConstructor).FullName!;
-
     public override PSMemberInfo Copy() => new PSBaseConstructor(_ctorInfo, Name, _definition, _reflector);
 
     public override object? Invoke(params object[] arguments)

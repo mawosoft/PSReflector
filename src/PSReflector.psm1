@@ -14,3 +14,5 @@ function New-PSReflector {
     param()
     [Mawosoft.PSReflector.Reflector]::new()
 }
+
+Export-ModuleMember -Function @('New-PSReflector')

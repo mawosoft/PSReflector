@@ -22,7 +22,7 @@ public sealed class PSBaseField : PSPropertyInfo
     public override PSMemberTypes MemberType => PSMemberTypes.CodeProperty;
     public override string TypeNameOfValue => _fieldInfo.FieldType.ToString();
     public override PSMemberInfo Copy()
-        => new PSBaseField(_fieldInfo, Name, canWrite: _canWrite, isStatic: _isStatic, definition: _definition, reflector: _reflector);
+        => new PSBaseField(_fieldInfo, Name, canWrite: _canWrite, isStatic: _isStatic, _definition, _reflector);
 
     public override object? Value
     {
