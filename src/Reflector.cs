@@ -1,6 +1,7 @@
 // Copyright (c) Matthias Wolf, Mawosoft.
 
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -23,12 +24,45 @@ public class Reflector
         ?? throw new MissingMethodException(nameof(PSObject), nameof(PSObject.AsPSObject));
 
     private readonly ConcurrentDictionary<Type, TypeDescriptor> _types = [];
+    private readonly ConcurrentDictionary<string, Type> _typeNames = new(StringComparer.OrdinalIgnoreCase); // TODO
 
-    /// <summary>Returns a collection of types that have been added to this instance.</summary>
+    /// <summary>Returns a collection of all registered types.</summary>
     public ICollection<Type> Types => _types.Keys;
 
-    /// <summary>Returns <c>true</c> if the specified type has been added to this instance.</summary>
+    /// <summary>Returns <c>true</c> if the specified type has been registered.</summary>
     public bool ContainsType(Type type) => _types.ContainsKey(type);
+
+    /// <summary>Returns <c>true</c> if the specified type has been registered.</summary>
+    public bool ContainsType(string typeName) => _typeNames.ContainsKey(typeName);
+
+    /// <summary>Gets a registered type by its name.</summary>
+    /// <returns>The registered type, or <c>null</c> if it doesn't exist.</returns>
+    public Type? GetType(string typeName) => _typeNames.TryGetValue(typeName, out var type) ? type : null;
+
+    public void RegisterType(IDictionary typesAndMembers)
+    {
+        throw new NotImplementedException(); // TODO
+    }
+
+    public void RegisterType(string assemblyName, IDictionary typesAndMembers)
+    {
+        throw new NotImplementedException(); // TODO
+    }
+
+    public void RegisterType(string assemblyName, string @namespace, IDictionary typesAndMembers)
+    {
+        throw new NotImplementedException(); // TODO
+    }
+
+    public void RegisterType(Assembly assembly, IDictionary typesAndMembers)
+    {
+        throw new NotImplementedException(); // TODO
+    }
+
+    public void RegisterType(Assembly assembly, string @namespace, IDictionary typesAndMembers)
+    {
+        throw new NotImplementedException(); // TODO
+    }
 
     /// <summary>
     /// Adds a type and its non-public members that should be exposed.
@@ -44,7 +78,34 @@ public class Reflector
     /// A subsequent call of <c>AddType</c> with the same <paramref name="type"/> overwrites any existing
     /// entries for that type. <paramref name="members"/> of a type are <b>not</b> added cumulatively.
     /// </remarks>
-    public void AddType(Type type, MemberDescriptor[] members) => AddType(type, Type.EmptyTypes, members);
+    [SuppressMessage("Design", "CA1062:Validate arguments of public methods",
+        Justification = "False positive for 'members'.")]
+    public void AddType(Type type, MemberDescriptor[] members)
+    {
+        // TODO make internal or private in favor of RegisterType() methods.
+        ArgumentNullException.ThrowIfNull(type);
+        if (members is null || members.Length == 0) ThrowMembersArgumentException();
+        if (!IsAllowedType(type)) throw new ArgumentException(null, nameof(type));
+        var typeInfo = new TypeDescriptor();
+        foreach (var member in members)
+        {
+            if (member is null) ThrowMembersArgumentException();
+            var mi = member.MemberInfo;
+            if (mi is null)
+            {
+                mi = FindMemberInfo(type, member);
+                if (mi is null) ThrowMembersArgumentException();
+            }
+            else
+            {
+                if (!IsAllowedMemberInfo(type, mi)) ThrowMembersArgumentException();
+            }
+            var psName = member.PSName;
+            if (psName is null || psName.Length == 0) psName = mi is ConstructorInfo ? "new" : mi.Name;
+            typeInfo.Pending.Add((psName, mi, member.CanWrite));
+        }
+        _types[type] = typeInfo;
+    }
 
     /// <summary>
     /// Adds a type and its non-public members that should be exposed.
@@ -62,74 +123,18 @@ public class Reflector
     /// - A subsequent call of <c>AddType</c> with the same <paramref name="type"/> overwrites any existing
     /// entries for that type. <paramref name="members"/> of a type are <b>not</b> added cumulatively.
     /// </remarks>
-    [SuppressMessage("Design", "CA1062:Validate arguments of public methods",
-        Justification = "False positive for 'members'.")]
     public void AddType(Type type, string[] members)
     {
-        ArgumentNullException.ThrowIfNull(type);
-        if (members is null || members.Length == 0) ThrowMembersArgumentException();
-        var descriptors = new MemberDescriptor[members.Length];
-        for (int i = 0; i < descriptors.Length; i++)
-        {
-            if (string.IsNullOrEmpty(members[i])) ThrowMembersArgumentException();
-            descriptors[i] = new MemberDescriptor { Name = members[i] };
-        }
-        AddType(type, Type.EmptyTypes, descriptors);
-    }
-
-    /// <summary>
-    /// Adds a type and its non-public members that should be exposed.
-    /// </summary>
-    /// <param name="baseType">
-    /// The type whose non-public members are described via <paramref name="members"/>.
-    /// </param>
-    /// <param name="derivedTypes">
-    /// An array of types derived from <paramref name="baseType"/> that should expose the same
-    /// <paramref name="members"/>.
-    /// </param>
-    /// <param name="members">
-    /// An array of <see cref="MemberDescriptor"/> instances that describe the non-public
-    /// members to expose.
-    /// </param>
-    /// <remarks>
-    /// A subsequent call of <c>AddType</c> with the same type(s) overwrites any existing entries
-    /// for those types. <paramref name="members"/> of a type are <b>not</b> added cumulatively.
-    /// </remarks>
-    [SuppressMessage("Design", "CA1062:Validate arguments of public methods",
-        Justification = "False positive for 'members'.")]
-    public void AddType(Type baseType, Type[] derivedTypes, MemberDescriptor[] members)
-    {
-        ArgumentNullException.ThrowIfNull(baseType);
-        ArgumentNullException.ThrowIfNull(derivedTypes);
-        if (members is null || members.Length == 0) ThrowMembersArgumentException();
-        if (!IsAllowedType(baseType)) throw new ArgumentException(null, nameof(baseType));
-        foreach (var type in derivedTypes)
-        {
-            if (!IsAllowedType(type) || !baseType.IsAssignableFrom(type))
-            {
-                throw new ArgumentException(null, nameof(derivedTypes));
-            }
-        }
-        var typeInfo = new TypeDescriptor();
-        foreach (var member in members)
-        {
-            if (member is null) ThrowMembersArgumentException();
-            var mi = member.MemberInfo;
-            if (mi is null)
-            {
-                mi = FindMemberInfo(baseType, member);
-                if (mi is null) ThrowMembersArgumentException();
-            }
-            else
-            {
-                if (!IsAllowedMemberInfo(baseType, mi)) ThrowMembersArgumentException();
-            }
-            var psName = member.PSName;
-            if (psName is null || psName.Length == 0) psName = mi is ConstructorInfo ? "new" : mi.Name;
-            typeInfo.Pending.Add((psName, mi, member.CanWrite));
-        }
-        _types[baseType] = typeInfo;
-        foreach (var type in derivedTypes) _types[type] = typeInfo;
+        throw new NotImplementedException(); // TODO obsolete this in favor of IDictionary conversion.
+        //ArgumentNullException.ThrowIfNull(type);
+        //if (members is null || members.Length == 0) ThrowMembersArgumentException();
+        //var descriptors = new MemberDescriptor[members.Length];
+        //for (int i = 0; i < descriptors.Length; i++)
+        //{
+        //    if (string.IsNullOrEmpty(members[i])) ThrowMembersArgumentException();
+        //    descriptors[i] = new MemberDescriptor { Name = members[i] };
+        //}
+        // TODO AddType(type, Type.EmptyTypes, descriptors);
     }
 
     /// <summary>
@@ -189,6 +194,11 @@ public class Reflector
         if (!(asType?.IsAssignableFrom(type) ?? false)) throw new ArgumentException(null, nameof(obj));
         if (!_types.TryGetValue(asType, out var typeInfo)) throw new ArgumentException(null, nameof(asType));
         return WrapObject(o, typeInfo);
+    }
+
+    public object Wrap(string typeName)
+    {
+        throw new NotImplementedException(); // TODO
     }
 
     private PSObject WrapObject(object obj, TypeDescriptor typeInfo)
@@ -323,8 +333,11 @@ public class Reflector
                 : MemberDescriptor.AllowedMemberTypes;
         }
         var candidates = type.GetMember(name, mt,
-            BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+            BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static
+            | BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase);
         MemberInfo? found = null;
+        MemberInfo? foundExact = null;
+        bool foundMultiple = false;
         foreach (var candidate in candidates)
         {
             if (!IsAllowedMemberInfo(type, candidate)) continue;
@@ -332,10 +345,20 @@ public class Reflector
                 || candidate is not MethodBase mb
                 || mb.GetParameters().Length == member.ParamCount.Value)
             {
-                if (found is not null) return null;
-                found = candidate;
+                if (name == candidate.Name)
+                {
+                    if (foundExact is not null) return null;
+                    foundExact = candidate;
+                }
+                else
+                {
+                    if (found is not null) foundMultiple = true;
+                    found = candidate;
+                }
             }
         }
+        if (foundExact is not null) return foundExact;
+        if (foundMultiple) return null;
         return found;
     }
 
