@@ -15,14 +15,13 @@ public sealed class PSBaseField : PSPropertyInfo
     private readonly bool _canWrite;
     private readonly bool _isStatic;
     private readonly Reflector? _reflector;
-    private string? _definition;
 
     public override bool IsSettable => _canWrite;
     public override bool IsGettable => true;
     public override PSMemberTypes MemberType => PSMemberTypes.CodeProperty;
     public override string TypeNameOfValue => _fieldInfo.FieldType.ToString();
     public override PSMemberInfo Copy()
-        => new PSBaseField(_fieldInfo, Name, canWrite: _canWrite, isStatic: _isStatic, _definition, _reflector);
+        => new PSBaseField(_fieldInfo, Name, canWrite: _canWrite, isStatic: _isStatic, _reflector);
 
     public override object? Value
     {
@@ -43,16 +42,12 @@ public sealed class PSBaseField : PSPropertyInfo
 
     public override string ToString()
     {
-        if (_definition is null)
-        {
-            var sb = new StringBuilder();
-            if (_isStatic) sb.Append("static ");
-            if (!_canWrite) sb.Append("readonly ");
-            Format(sb, _fieldInfo.FieldType);
-            sb.Append(' ').Append(_fieldInfo.Name);
-            _definition = sb.ToString();
-        }
-        return _definition;
+        var sb = new StringBuilder();
+        if (_isStatic) sb.Append("static ");
+        if (!_canWrite) sb.Append("readonly ");
+        Format(sb, _fieldInfo.FieldType);
+        sb.Append(' ').Append(_fieldInfo.Name);
+        return sb.ToString();
     }
 
     internal PSBaseField(FieldInfo info, string? name, bool canWrite, Reflector? reflector)
@@ -66,13 +61,12 @@ public sealed class PSBaseField : PSPropertyInfo
         _reflector = reflector;
     }
 
-    private PSBaseField(FieldInfo info, string name, bool canWrite, bool isStatic, string? definition, Reflector? reflector)
+    private PSBaseField(FieldInfo info, string name, bool canWrite, bool isStatic, Reflector? reflector)
     {
         SetMemberName(name);
         _fieldInfo = info;
         _canWrite = canWrite;
         _isStatic = isStatic;
-        _definition = definition;
         _reflector = reflector;
     }
 }

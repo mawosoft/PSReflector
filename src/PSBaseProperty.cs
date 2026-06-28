@@ -15,14 +15,13 @@ public sealed class PSBaseProperty : PSPropertyInfo
     private readonly bool _canWrite;
     private readonly bool _isStatic;
     private readonly Reflector? _reflector;
-    private string? _definition;
 
     public override bool IsSettable => _canWrite;
     public override bool IsGettable => true;
     public override PSMemberTypes MemberType => PSMemberTypes.CodeProperty;
     public override string TypeNameOfValue => _propertyInfo.PropertyType.ToString();
     public override PSMemberInfo Copy()
-        => new PSBaseProperty(_propertyInfo, Name, canWrite: _canWrite, isStatic: _isStatic, _definition, _reflector);
+        => new PSBaseProperty(_propertyInfo, Name, canWrite: _canWrite, isStatic: _isStatic, _reflector);
 
     public override object? Value
     {
@@ -43,17 +42,13 @@ public sealed class PSBaseProperty : PSPropertyInfo
 
     public override string ToString()
     {
-        if (_definition is null)
-        {
-            var sb = new StringBuilder();
-            if (_isStatic) sb.Append("static ");
-            Format(sb, _propertyInfo.PropertyType);
-            sb.Append(' ').Append(_propertyInfo.Name).Append(" {get;");
-            if (_canWrite) sb.Append("set;");
-            sb.Append('}');
-            _definition = sb.ToString();
-        }
-        return _definition;
+        var sb = new StringBuilder();
+        if (_isStatic) sb.Append("static ");
+        Format(sb, _propertyInfo.PropertyType);
+        sb.Append(' ').Append(_propertyInfo.Name).Append(" {get;");
+        if (_canWrite) sb.Append("set;");
+        sb.Append('}');
+        return sb.ToString();
     }
 
     internal PSBaseProperty(PropertyInfo info, string? name, bool canWrite, Reflector? reflector)
@@ -67,13 +62,12 @@ public sealed class PSBaseProperty : PSPropertyInfo
         _reflector = reflector;
     }
 
-    private PSBaseProperty(PropertyInfo info, string name, bool canWrite, bool isStatic, string? definition, Reflector? reflector)
+    private PSBaseProperty(PropertyInfo info, string name, bool canWrite, bool isStatic, Reflector? reflector)
     {
         SetMemberName(name);
         _propertyInfo = info;
         _canWrite = canWrite;
         _isStatic = isStatic;
-        _definition = definition;
         _reflector = reflector;
     }
 }
