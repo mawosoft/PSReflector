@@ -304,25 +304,13 @@ public class Reflector
 
     private static MemberInfo? FindMemberInfo(Type type, MemberDescriptor member)
     {
-        var mt = member.MemberType;
-        if ((mt & ~MemberDescriptor.AllowedMemberTypes) != 0) return null;
-        var name = member.Name;
-        if (string.IsNullOrEmpty(name))
-        {
-            if (mt != MemberTypes.Constructor) return null;
-            name = ".ctor";
-        }
-        else if (member.Name == ".ctor")
-        {
-            mt = MemberTypes.Constructor;
-        }
-        else if (mt == default)
-        {
-            mt = member.ParamCount.HasValue
+        if (string.IsNullOrEmpty(member.Name)) return null;
+        var mt = member.Name == ".ctor"
+            ? MemberTypes.Constructor
+            : member.ParamCount.HasValue
                 ? MemberTypes.Method | MemberTypes.Constructor
                 : MemberDescriptor.AllowedMemberTypes;
-        }
-        var candidates = type.GetMember(name, mt,
+        var candidates = type.GetMember(member.Name, mt,
             BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.FlattenHierarchy);
         MemberInfo? found = null;
         foreach (var candidate in candidates)
