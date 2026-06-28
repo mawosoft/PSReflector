@@ -14,13 +14,11 @@ public sealed class PSBaseMethod : PSMethodInfo
     private readonly MethodInfo _methodInfo;
     private readonly bool _isStatic;
     private readonly Reflector? _reflector;
-    private string? _definition;
 
     public override Collection<string> OverloadDefinitions => [ToString()];
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
     public override string TypeNameOfValue => typeof(PSBaseMethod).FullName!;
-    public override PSMemberInfo Copy()
-        => new PSBaseMethod(_methodInfo, Name, _isStatic, _definition, _reflector);
+    public override PSMemberInfo Copy() => new PSBaseMethod(_methodInfo, Name, _isStatic, _reflector);
 
     public override object? Invoke(params object[] arguments)
     {
@@ -29,7 +27,7 @@ public sealed class PSBaseMethod : PSMethodInfo
         return _reflector is null ? retval : _reflector.Wrap(retval);
     }
 
-    public override string ToString() => _definition ??= Format(_methodInfo);
+    public override string ToString() => Format(_methodInfo);
 
     internal PSBaseMethod(MethodInfo info, string? name, Reflector? reflector)
     {
@@ -40,12 +38,11 @@ public sealed class PSBaseMethod : PSMethodInfo
         _reflector = reflector;
     }
 
-    private PSBaseMethod(MethodInfo info, string name, bool isStatic, string? definition, Reflector? reflector)
+    private PSBaseMethod(MethodInfo info, string name, bool isStatic, Reflector? reflector)
     {
         SetMemberName(name);
         _methodInfo = info;
         _isStatic = isStatic;
-        _definition = definition;
         _reflector = reflector;
     }
 }

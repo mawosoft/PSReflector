@@ -13,12 +13,11 @@ public sealed class PSBaseConstructor : PSMethodInfo
 {
     private readonly ConstructorInfo _ctorInfo;
     private readonly Reflector? _reflector;
-    private string? _definition;
 
     public override Collection<string> OverloadDefinitions => [ToString()];
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
     public override string TypeNameOfValue => typeof(PSBaseConstructor).FullName!;
-    public override PSMemberInfo Copy() => new PSBaseConstructor(_ctorInfo, Name, _definition, _reflector);
+    public override PSMemberInfo Copy() => new PSBaseConstructor(Name, _ctorInfo, _reflector);
 
     public override object? Invoke(params object[] arguments)
     {
@@ -26,7 +25,7 @@ public sealed class PSBaseConstructor : PSMethodInfo
         return _reflector is null ? retval : _reflector.Wrap(retval);
     }
 
-    public override string ToString() => _definition ??= Format(_ctorInfo);
+    public override string ToString() => Format(_ctorInfo);
 
     internal Type? DeclaringType => _ctorInfo.DeclaringType;
 
@@ -38,11 +37,10 @@ public sealed class PSBaseConstructor : PSMethodInfo
         _reflector = reflector;
     }
 
-    private PSBaseConstructor(ConstructorInfo info, string name, string? definition, Reflector? reflector)
+    private PSBaseConstructor(string name, ConstructorInfo info, Reflector? reflector)
     {
         SetMemberName(name);
         _ctorInfo = info;
-        _definition = definition;
         _reflector = reflector;
     }
 }
