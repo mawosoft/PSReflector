@@ -9,12 +9,12 @@ using static Mawosoft.PSReflector.PSBaseMemberFormatter;
 
 namespace Mawosoft.PSReflector;
 
-public sealed class PSBaseField : PSPropertyInfo
+public sealed class PSBaseField : PSPropertyInfo, IPSBaseMemberInfo
 {
     private readonly FieldInfo _fieldInfo;
     private readonly bool _canWrite;
     private readonly bool _isStatic;
-    private readonly Reflector? _reflector;
+    private Reflector? _reflector;
 
     public override bool IsSettable => _canWrite;
     public override bool IsGettable => true;
@@ -50,7 +50,7 @@ public sealed class PSBaseField : PSPropertyInfo
         return sb.ToString();
     }
 
-    internal PSBaseField(FieldInfo info, string? name, bool canWrite, Reflector? reflector)
+    internal PSBaseField(FieldInfo info, string? name, bool canWrite)
     {
         ArgumentNullException.ThrowIfNull(info);
         SetMemberName(string.IsNullOrEmpty(name) ? info.Name : name);
@@ -58,7 +58,6 @@ public sealed class PSBaseField : PSPropertyInfo
         var attr = _fieldInfo.Attributes; // This is a virtual call!
         _canWrite = canWrite && (attr & (FieldAttributes.Literal | FieldAttributes.InitOnly)) == 0;
         _isStatic = attr.HasFlag(FieldAttributes.Static);
-        _reflector = reflector;
     }
 
     private PSBaseField(FieldInfo info, string name, bool canWrite, bool isStatic, Reflector? reflector)
@@ -69,4 +68,12 @@ public sealed class PSBaseField : PSPropertyInfo
         _isStatic = isStatic;
         _reflector = reflector;
     }
+
+    // IPSBaseMemberInfo
+
+    public MemberInfo MemberInfo => _fieldInfo;
+    public Type ReturnType => _fieldInfo.FieldType;
+    public bool IsStatic => _isStatic;
+    public bool CanWrite => _canWrite;
+    public Reflector? Reflector { get => _reflector; set => _reflector = value; }
 }

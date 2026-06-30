@@ -9,11 +9,11 @@ using static Mawosoft.PSReflector.PSBaseMemberFormatter;
 
 namespace Mawosoft.PSReflector;
 
-public sealed class PSBaseMethod : PSMethodInfo
+public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
 {
     private readonly MethodInfo _methodInfo;
     private readonly bool _isStatic;
-    private readonly Reflector? _reflector;
+    private Reflector? _reflector;
 
     public override Collection<string> OverloadDefinitions => [ToString()];
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
@@ -29,13 +29,12 @@ public sealed class PSBaseMethod : PSMethodInfo
 
     public override string ToString() => Format(_methodInfo);
 
-    internal PSBaseMethod(MethodInfo info, string? name, Reflector? reflector)
+    internal PSBaseMethod(MethodInfo info, string? name)
     {
         ArgumentNullException.ThrowIfNull(info);
         SetMemberName(string.IsNullOrEmpty(name) ? info.Name : name);
         _methodInfo = info;
         _isStatic = info.IsStatic;
-        _reflector = reflector;
     }
 
     private PSBaseMethod(MethodInfo info, string name, bool isStatic, Reflector? reflector)
@@ -45,4 +44,12 @@ public sealed class PSBaseMethod : PSMethodInfo
         _isStatic = isStatic;
         _reflector = reflector;
     }
+
+    // IPSBaseMemberInfo
+
+    public MemberInfo MemberInfo => _methodInfo;
+    public Type ReturnType => _methodInfo.ReturnType;
+    public bool IsStatic => _isStatic;
+    public bool CanWrite => false;
+    public Reflector? Reflector { get => _reflector; set => _reflector = value; }
 }
