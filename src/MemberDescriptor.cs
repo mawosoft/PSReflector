@@ -2,6 +2,7 @@
 
 using System.Management.Automation;
 using System.Reflection;
+using System.Text;
 
 namespace Mawosoft.PSReflector;
 
@@ -67,4 +68,37 @@ public sealed class MemberDescriptor
     /// Constructor to support PowerShell conversion from <see cref="System.Reflection.MemberInfo"/>.
     /// </summary>
     public MemberDescriptor(MemberInfo memberInfo) => MemberInfo = memberInfo;
+
+    /// <inheritdoc/>
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        sb.Append(nameof(MemberDescriptor)).Append(" { ");
+        if (Name is null && MemberInfo is null)
+        {
+            sb.Append(nameof(Name)).Append(": null");
+        }
+        else if (Name is not null)
+        {
+            sb.Append(nameof(Name)).Append(": ").Append(Name);
+        }
+        if (PSName is not null)
+        {
+            sb.Append(", ").Append(nameof(PSName)).Append(": ").Append(PSName);
+        }
+        if (ParamCount.HasValue)
+        {
+            sb.Append(", ").Append(nameof(ParamCount)).Append(": ").Append(ParamCount.Value);
+        }
+        if (MemberInfo is not null)
+        {
+            sb.Append(", ").Append(nameof(MemberInfo)).Append(": ").Append(MemberInfo.ToString());
+        }
+        if (CanWrite)
+        {
+            sb.Append(", ").Append(nameof(CanWrite)).Append(": true");
+        }
+        sb.Append(" }");
+        return sb.ToString();
+    }
 }
