@@ -9,15 +9,15 @@ using static Mawosoft.PSReflector.PSBaseMemberFormatter;
 
 namespace Mawosoft.PSReflector;
 
-public sealed class PSBaseConstructor : PSMethodInfo
+public sealed class PSBaseConstructor : PSMethodInfo, IPSBaseMemberInfo
 {
     private readonly ConstructorInfo _ctorInfo;
-    private readonly Reflector? _reflector;
+    private Reflector? _reflector;
 
     public override Collection<string> OverloadDefinitions => [ToString()];
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
     public override string TypeNameOfValue => typeof(PSBaseConstructor).FullName!;
-    public override PSMemberInfo Copy() => new PSBaseConstructor(Name, _ctorInfo, _reflector);
+    public override PSMemberInfo Copy() => new PSBaseConstructor(_ctorInfo, Name, _reflector);
 
     public override object? Invoke(params object[] arguments)
     {
@@ -27,20 +27,25 @@ public sealed class PSBaseConstructor : PSMethodInfo
 
     public override string ToString() => Format(_ctorInfo);
 
-    internal Type? DeclaringType => _ctorInfo.DeclaringType;
-
-    internal PSBaseConstructor(ConstructorInfo info, string? name, Reflector? reflector)
+    internal PSBaseConstructor(ConstructorInfo info, string? name)
     {
         ArgumentNullException.ThrowIfNull(info);
         SetMemberName(string.IsNullOrEmpty(name) ? "new" : name);
         _ctorInfo = info;
-        _reflector = reflector;
     }
 
-    private PSBaseConstructor(string name, ConstructorInfo info, Reflector? reflector)
+    private PSBaseConstructor(ConstructorInfo info, string name, Reflector? reflector)
     {
         SetMemberName(name);
         _ctorInfo = info;
         _reflector = reflector;
     }
+
+    // IPSBaseMemberInfo
+
+    public MemberInfo MemberInfo => _ctorInfo;
+    public Type ReturnType => _ctorInfo.ReflectedType;
+    public bool IsStatic => _ctorInfo.IsStatic;
+    public bool CanWrite => false;
+    public Reflector? Reflector { get => _reflector; set => _reflector = value; }
 }

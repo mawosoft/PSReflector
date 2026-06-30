@@ -9,12 +9,12 @@ using static Mawosoft.PSReflector.PSBaseMemberFormatter;
 
 namespace Mawosoft.PSReflector;
 
-public sealed class PSBaseProperty : PSPropertyInfo
+public sealed class PSBaseProperty : PSPropertyInfo, IPSBaseMemberInfo
 {
     private readonly PropertyInfo _propertyInfo;
     private readonly bool _canWrite;
     private readonly bool _isStatic;
-    private readonly Reflector? _reflector;
+    private Reflector? _reflector;
 
     public override bool IsSettable => _canWrite;
     public override bool IsGettable => true;
@@ -51,7 +51,7 @@ public sealed class PSBaseProperty : PSPropertyInfo
         return sb.ToString();
     }
 
-    internal PSBaseProperty(PropertyInfo info, string? name, bool canWrite, Reflector? reflector)
+    internal PSBaseProperty(PropertyInfo info, string? name, bool canWrite)
     {
         ArgumentNullException.ThrowIfNull(info);
         var getter = info.GetMethod ?? throw new ArgumentException(null, nameof(info));
@@ -59,7 +59,6 @@ public sealed class PSBaseProperty : PSPropertyInfo
         _propertyInfo = info;
         _canWrite = canWrite && info.CanWrite;
         _isStatic = getter.IsStatic;
-        _reflector = reflector;
     }
 
     private PSBaseProperty(PropertyInfo info, string name, bool canWrite, bool isStatic, Reflector? reflector)
@@ -70,4 +69,12 @@ public sealed class PSBaseProperty : PSPropertyInfo
         _isStatic = isStatic;
         _reflector = reflector;
     }
+
+    // IPSBaseMemberInfo
+
+    public MemberInfo MemberInfo => _propertyInfo;
+    public Type ReturnType => _propertyInfo.PropertyType;
+    public bool IsStatic => _isStatic;
+    public bool CanWrite => _canWrite;
+    public Reflector? Reflector { get => _reflector; set => _reflector = value; }
 }
