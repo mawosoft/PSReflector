@@ -329,13 +329,4 @@ public class Reflector
 
     [DoesNotReturn]
     private static void ThrowMembersArgumentException() => throw new ArgumentException(null, "members");
-
-    private sealed class TypeDescriptor
-    {
-        public List<(string PSName, MemberInfo MemberInfo, bool CanWrite)> Pending { get; set; } = [];
-        public List<PSMemberInfo> InstanceMembers { get; set; } = null!;
-        public List<PSMemberInfo> TypeMembers { get; set; } = null!;
-        public List<PSBaseConstructor> Constructors { get; set; } = null!;
-        public bool IsInitialized { get; set; }
-    }
 }
