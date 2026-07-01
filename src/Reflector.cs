@@ -4,9 +4,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Management.Automation;
 using System.Reflection;
+using System.Threading;
 
 namespace Mawosoft.PSReflector;
 
@@ -14,7 +14,7 @@ namespace Mawosoft.PSReflector;
 /// Provides functionality to register types and their non-public members for exposure and a way to
 /// access them like public members.
 /// </summary>
-public class Reflector
+public sealed class Reflector
 {
     internal static readonly Func<object, bool, PSObject> PSObjectAsPSObject2Delegate = (Func<object, bool, PSObject>?)
         typeof(PSObject).GetMethod(nameof(PSObject.AsPSObject), BindingFlags.NonPublic | BindingFlags.Static,
@@ -22,130 +22,148 @@ public class Reflector
         .CreateDelegate(typeof(Func<object, bool, PSObject>))
         ?? throw new MissingMethodException(nameof(PSObject), nameof(PSObject.AsPSObject));
 
-    private readonly ConcurrentDictionary<Type, TypeDescriptor> _types = [];
+    private readonly ConcurrentDictionary<Type, TypeDescriptor> _registeredTypes = [];
+    private readonly ConcurrentDictionary<Type, bool> _additionalTypes = [];
+    private volatile int _typesVersion;
 
-    /// <summary>Returns a collection of types that have been added to this instance.</summary>
-    public ICollection<Type> Types => _types.Keys;
+    /// <summary>Returns a collection of types that have been registered with this instance.</summary>
+    public ICollection<Type> RegisteredTypes => _registeredTypes.Keys;
 
-    /// <summary>Returns <c>true</c> if the specified type has been added to this instance.</summary>
-    public bool ContainsType(Type type) => _types.ContainsKey(type);
-
-    /// <summary>
-    /// Adds a type and its non-public members that should be exposed.
-    /// </summary>
-    /// <param name="type">
-    /// The type whose non-public members are described via <paramref name="members"/>.
-    /// </param>
-    /// <param name="members">
-    /// An array of <see cref="MemberDescriptor"/> instances that describe the non-public
-    /// members to expose.
-    /// </param>
-    /// <remarks>
-    /// A subsequent call of <c>AddType</c> with the same <paramref name="type"/> overwrites any existing
-    /// entries for that type. <paramref name="members"/> of a type are <b>not</b> added cumulatively.
-    /// </remarks>
-    public void AddType(Type type, MemberDescriptor[] members) => AddType(type, Type.EmptyTypes, members);
+    /// <summary>Returns <c>true</c> if the specified type has been registered with this instance.</summary>
+    public bool IsTypeRegistered(Type type) => _registeredTypes.ContainsKey(type);
 
     /// <summary>
-    /// Adds a type and its non-public members that should be exposed.
+    /// Returns a collection of additional types that trigger automatic wrapping of return values from
+    /// registered members.
     /// </summary>
-    /// <param name="type">
-    /// The type whose non-public members are described via <paramref name="members"/>.
+    public ICollection<Type> AdditionalTypes => _additionalTypes.Keys;
+
+    /// <summary>
+    /// Registers non-public type members to be exposed like public members via <see cref="Wrap(object?)"/>.
+    /// </summary>
+    /// <param name="types">
+    /// An array of types whose non-public members are described by <paramref name="members"/>. 
+    /// Types must be concrete (not abstract classes or interfaces), though static classes are permitted.
     /// </param>
     /// <param name="members">
-    /// An array of non-public member names to expose.
+    /// An array of <see cref="MemberDescriptor"/> instances that describe the non-public members to expose.
+    /// </param>
+    /// <param name="caseSensitive">
+    /// <c>true</c> to perform a case-sensitive search for member names. The default is <c>false</c>, which
+    /// performs a case-insensitive search to match PowerShell's behavior. If a case-insensitive search is
+    /// ambiguous, a single case-sensitive match will resolve the ambiguity.
     /// </param>
     /// <remarks>
-    /// - Member names must be unambiguous. If they aren't, use one of the other overloads.<br />
-    /// - If the member names refer to properties or fields, they will be exposed as read-only.
-    /// If you need them writable,  use one of the other overloads.<br />
-    /// - A subsequent call of <c>AddType</c> with the same <paramref name="type"/> overwrites any existing
-    /// entries for that type. <paramref name="members"/> of a type are <b>not</b> added cumulatively.
+    /// - You can invoke this method multiple times to cumulatively register different members for the same
+    /// type.<br/>
+    /// - Passing an array of types allows you to conveniently register shared interface members across several
+    /// implementing types in a single call.
     /// </remarks>
-    [SuppressMessage("Design", "CA1062:Validate arguments of public methods",
-        Justification = "False positive for 'members'.")]
-    public void AddType(Type type, string[] members)
+    public void Register(Type[] types, MemberDescriptor[] members, bool caseSensitive = false)
     {
-        ArgumentNullException.ThrowIfNull(type);
-        if (members is null || members.Length == 0) ThrowMembersArgumentException();
-        var descriptors = new MemberDescriptor[members.Length];
-        for (int i = 0; i < descriptors.Length; i++)
+        Throw.IfNullOrEmpty(types);
+        Throw.IfNullOrEmpty(members);
+        List<MemberInfo> memberInfos = [];
+        List<TypeDescriptor> typeDescriptors = [];
+        foreach (var type in types)
         {
-            if (string.IsNullOrEmpty(members[i])) ThrowMembersArgumentException();
-            descriptors[i] = new MemberDescriptor { Name = members[i] };
-        }
-        AddType(type, Type.EmptyTypes, descriptors);
-    }
-
-    /// <summary>
-    /// Adds a type and its non-public members that should be exposed.
-    /// </summary>
-    /// <param name="baseType">
-    /// The type whose non-public members are described via <paramref name="members"/>.
-    /// </param>
-    /// <param name="derivedTypes">
-    /// An array of types derived from <paramref name="baseType"/> that should expose the same
-    /// <paramref name="members"/>.
-    /// </param>
-    /// <param name="members">
-    /// An array of <see cref="MemberDescriptor"/> instances that describe the non-public
-    /// members to expose.
-    /// </param>
-    /// <remarks>
-    /// A subsequent call of <c>AddType</c> with the same type(s) overwrites any existing entries
-    /// for those types. <paramref name="members"/> of a type are <b>not</b> added cumulatively.
-    /// </remarks>
-    [SuppressMessage("Design", "CA1062:Validate arguments of public methods",
-        Justification = "False positive for 'members'.")]
-    public void AddType(Type baseType, Type[] derivedTypes, MemberDescriptor[] members)
-    {
-        ArgumentNullException.ThrowIfNull(baseType);
-        ArgumentNullException.ThrowIfNull(derivedTypes);
-        if (members is null || members.Length == 0) ThrowMembersArgumentException();
-        if (!IsAllowedType(baseType)) throw new ArgumentException(null, nameof(baseType));
-        foreach (var type in derivedTypes)
-        {
-            if (!IsAllowedType(type) || !baseType.IsAssignableFrom(type))
+            if (type.HasElementType
+                || type.IsInterface
+                || (type.IsAbstract && !type.IsSealed)
+                || type.ContainsGenericParameters
+                || typeof(Type).IsAssignableFrom(type))
             {
-                throw new ArgumentException(null, nameof(derivedTypes));
+                Throw.UnsupportedType(type, nameof(types));
+            }
+            var typeDescriptor = new TypeDescriptor(type);
+            typeDescriptors.Add(typeDescriptor);
+            foreach (var member in members)
+            {
+                if ((string.IsNullOrEmpty(member.Name) && member.MemberInfo is null)
+                    || (member.ParamCount.HasValue && member.ParamCount.Value < 0))
+                {
+                    Throw.InvalidMemberDescriptor(type, member, nameof(members));
+                }
+                var mi = member.MemberInfo;
+                if (mi is null)
+                {
+                    if (FindMemberInfo(type, member.Name!, member.ParamCount, caseSensitive, memberInfos))
+                    {
+                        mi = memberInfos[0];
+                    }
+                    else
+                    {
+                        Throw.MemberNotFound(type, member, memberInfos);
+                    }
+                }
+                else
+                {
+                    if (mi.ReflectedType is null || !mi.ReflectedType.IsAssignableFrom(type))
+                        Throw.NonmatchingMemberDescriptor(type, member, nameof(members));
+                    if (!IsAllowedMemberInfo(type, mi))
+                        Throw.UnsupportedMember(type, member, nameof(members));
+                }
+                var psName = member.PSName;
+                if (psName is null || psName.Length == 0) psName = mi is ConstructorInfo ? "new" : mi.Name;
+                typeDescriptor.MemberDescriptors.Add((psName, mi, member.CanWrite));
             }
         }
-        var typeInfo = new TypeDescriptor();
-        foreach (var member in members)
+        Interlocked.Increment(ref _typesVersion);
+        foreach (var typeDescriptor in typeDescriptors)
         {
-            if (member is null) ThrowMembersArgumentException();
-            var mi = member.MemberInfo;
-            if (mi is null)
-            {
-                mi = FindMemberInfo(baseType, member);
-                if (mi is null) ThrowMembersArgumentException();
-            }
-            else
-            {
-                if (!IsAllowedMemberInfo(baseType, mi)) ThrowMembersArgumentException();
-            }
-            var psName = member.PSName;
-            if (psName is null || psName.Length == 0) psName = mi is ConstructorInfo ? "new" : mi.Name;
-            typeInfo.Pending.Add((psName, mi, member.CanWrite));
+            _registeredTypes.AddOrUpdate(
+                typeDescriptor.Type,
+                (type) =>
+                {
+                    // Track additional member return types that may yield an instance of type.
+                    // TODO We are currently limiting this to interfaces and abstract base classes.
+                    //      Not sure if that limit makes sense or even the entire idea, since
+                    //      it only applies to members we add, not the regular public ones.
+                    foreach (var t in type.GetInterfaces())
+                    {
+                        _additionalTypes.TryAdd(t, false);
+                    }
+                    if (!type.IsValueType)
+                    {
+                        for (var t = type.BaseType; t is not null; t = t.BaseType)
+                        {
+                            if (t.IsAbstract)
+                            {
+                                _additionalTypes.TryAdd(t, false);
+                            }
+                        }
+                    }
+                    return typeDescriptor;
+                },
+                (type, existing) =>
+                {
+                    // Replacing the descriptor ensures:
+                    // - Access to MemberDescriptors is thread-safe.
+                    // - TypeDescriptor reverts to unitialized.
+                    // - Even a higher Version on the existing TypeDescriptor doesn't cause problems.
+                    var td = new TypeDescriptor(type);
+                    td.MemberDescriptors.AddRange(existing.MemberDescriptors);
+                    td.MemberDescriptors.AddRange(typeDescriptor.MemberDescriptors);
+                    return td;
+                });
         }
-        _types[baseType] = typeInfo;
-        foreach (var type in derivedTypes) _types[type] = typeInfo;
     }
 
     /// <summary>
     /// Returns <paramref name="obj"/> wrapped in a new <see cref="PSObject"/> if <paramref name="obj"/>
-    /// is an instance of a type or a type that has been previously added via <c>AddType</c>.
-    /// Otherwise it returns the same <paramref name="obj"/> unchanged.
+    /// is an instance of a registered type, or the registered type itself. The type must have been 
+    /// previously registered via <see cref="Register(Type[], MemberDescriptor[], bool)"/>.
+    /// Otherwise, it returns the same <paramref name="obj"/> unchanged.
     /// </summary>
     /// <param name="obj">The object to wrap.</param>
     /// <returns>
     /// - If <paramref name="obj"/> is an instance of a registered type, it is wrapped in a new
-    /// <see cref="PSObject"/>. That wrapper has all declared non-public instance <b>and static</b>
-    /// members added as public instance properties and methods. Non-public constructors are not
+    /// <see cref="PSObject"/>. The wrapper exposes all registered non-public instance <b>and static</b>
+    /// members as public instance properties and methods. Non-public constructors are not
     /// added in this case.<br />
-    /// - If <paramref name="obj"/> is a registered type, it is wrapped in a new <see cref="PSObject"/>
-    /// as well. That wrapper exposes only the declared non-public static members and non-public
-    /// constructors, but still as instance properties and methods.<br />
+    /// - If <paramref name="obj"/> is a registered type itself, it is also wrapped in a new <see cref="PSObject"/>.
+    /// This wrapper exposes only the registered non-public static members and non-public constructors,
+    /// but still as instance properties and methods.<br />
     /// - If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
     /// </returns>
     public object? Wrap(object? obj)
@@ -153,125 +171,108 @@ public class Reflector
         var o = obj is PSObject pso ? pso.BaseObject : obj;
         if (o is null) return obj;
         if (o is not Type type) type = o.GetType();
-        if (!_types.TryGetValue(type, out var typeInfo)) return obj;
-        return WrapObject(o, typeInfo);
+        if (!_registeredTypes.TryGetValue(type, out var typeDescriptor)) return obj;
+        return WrapObject(o, typeDescriptor);
     }
 
     /// <summary>
-    /// Returns <paramref name="obj"/> wrapped in a new <see cref="PSObject"/> if <paramref name="asType"/>
-    /// is a type that has been previously added via <c>AddType</c> and <paramref name="obj"/> is an instance
-    /// of a type or a type that is assignable to <paramref name="asType"/>.
-    /// Returns null if <paramref name="obj"/> is null.
-    /// Throws if <paramref name="obj"/> is anything else or <paramref name="asType"/> has not been added.
+    /// Returns <paramref name="obj"/> wrapped in a new <see cref="PSObject"/> if it is 
+    /// an instance of a registered type, the type itself, or if it can be cast to the 
+    /// <paramref name="fallbackType"/>. Types must have been previously registered via 
+    /// <see cref="Register(Type[], MemberDescriptor[], bool)"/>.
+    /// Otherwise, it returns the same <paramref name="obj"/> unchanged.
     /// </summary>
     /// <param name="obj">The object to wrap.</param>
-    /// <param name="asType">The base type to use.</param>
+    /// <param name="fallbackType">
+    /// A previously registered type to use as a fallback if the type of <paramref name="obj"/>
+    /// is not registered.
+    /// </param>
     /// <returns>
-    /// - If <paramref name="obj"/> is an instance of a type assignable to <paramref name="asType"/>, it is
-    /// wrapped in a new <see cref="PSObject"/>. That wrapper has all declared non-public instance
-    /// <b>and static</b> members added as public instance properties and methods. Non-public constructors
-    /// are not added in this case.<br />
-    /// - If <paramref name="obj"/> is a type assignable to <paramref name="asType"/>, it is wrapped in a
-    /// new <see cref="PSObject"/> as well. That wrapper exposes only the declared non-public static members
+    /// - If <paramref name="obj"/> is an instance of a registered type, or if it can be cast to 
+    /// <paramref name="fallbackType"/>, it is wrapped in a new <see cref="PSObject"/>. 
+    /// This wrapper exposes all registered non-public instance <b>and static</b> members 
+    /// (from either its own type or the fallback type) as public instance properties and methods. 
+    /// Non-public constructors are not added in this case.<br />
+    /// - If <paramref name="obj"/> is a registered type itself, it is also wrapped in a new
+    /// <see cref="PSObject"/>. This wrapper exposes only the registered non-public static members
     /// and non-public constructors, but still as instance properties and methods.<br />
-    /// - If <paramref name="obj"/> is <c>null</c>, <c>null</c> is returned.
+    /// - If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
     /// </returns>
-    /// <exception cref="ArgumentException">
-    /// - <paramref name="obj"/> is not null <c>null</c> and not an instance of a type or a type assignable to
-    /// <paramref name="asType"/>.<br />
-    /// - <paramref name="asType"/> is not a type registered via <c>AddType</c>.
-    /// </exception>
-    public object? WrapAs(object? obj, Type asType)
+    public object? Wrap(object? obj, Type fallbackType)
     {
         var o = obj is PSObject pso ? pso.BaseObject : obj;
         if (o is null) return obj;
-        if (o is not Type type) type = o.GetType();
-        if (!(asType?.IsAssignableFrom(type) ?? false)) throw new ArgumentException(null, nameof(obj));
-        if (!_types.TryGetValue(asType, out var typeInfo)) throw new ArgumentException(null, nameof(asType));
-        return WrapObject(o, typeInfo);
-    }
-
-    private PSObject WrapObject(object obj, TypeDescriptor typeInfo)
-    {
-        if (!typeInfo.IsInitialized) UpdateTypeDescriptor(typeInfo);
-        var pso = PSObjectAsPSObject2Delegate(obj, true);
-        var psoMembers = pso.Members;
-        if (obj is Type type)
+        TypeDescriptor? typeDescriptor;
+        if (o is Type type)
         {
-            foreach (var m in typeInfo.Constructors)
-            {
-                if (m.DeclaringType == type) psoMembers.Add(m);
-            }
-            foreach (var m in typeInfo.TypeMembers) psoMembers.Add(m);
+            if (!_registeredTypes.TryGetValue(type, out typeDescriptor)) return obj;
         }
         else
         {
-            foreach (var m in typeInfo.InstanceMembers) psoMembers.Add(m);
+            type = o.GetType();
+            if (!_registeredTypes.TryGetValue(type, out typeDescriptor))
+            {
+                if (fallbackType is null || !_registeredTypes.TryGetValue(fallbackType, out typeDescriptor))
+                {
+                    throw new ArgumentException(null, nameof(fallbackType));
+                }
+                if (!fallbackType.IsAssignableFrom(type)) return obj;
+            }
         }
+        return WrapObject(o, typeDescriptor);
+    }
+
+    private PSObject WrapObject(object obj, TypeDescriptor typeDescriptor)
+    {
+        if (typeDescriptor.Version < _typesVersion) UpdateTypeDescriptor(typeDescriptor);
+        var pso = PSObjectAsPSObject2Delegate(obj, true);
+        var psoMembers = pso.Members;
+        var source = obj is Type ? typeDescriptor.TypeMembers : typeDescriptor.InstanceMembers;
+        foreach (var m in source) psoMembers.Add(m);
         return pso;
     }
 
-    private void UpdateTypeDescriptor(TypeDescriptor typeInfo)
+    private void UpdateTypeDescriptor(TypeDescriptor typeDescriptor)
     {
-        if (typeInfo.IsInitialized) return;
-        var pending = typeInfo.Pending;
-        var instanceMembers = new List<PSMemberInfo>(pending.Count);
+        int version = _typesVersion;
+        if (typeDescriptor.Version >= version) return;
+        var memberDescriptors = typeDescriptor.MemberDescriptors;
+        var instanceMembers = new List<PSMemberInfo>(memberDescriptors.Count);
         var typeMembers = new List<PSMemberInfo>();
-        var constructors = new List<PSBaseConstructor>();
-        foreach ((string PSName, MemberInfo MemberInfo, bool CanWrite) in pending)
+        foreach ((string PSName, MemberInfo MemberInfo, bool CanWrite) in memberDescriptors)
         {
             if (MemberInfo is ConstructorInfo ci)
             {
-                constructors.Add(new PSBaseConstructor(ci, PSName, this));
+                typeMembers.Add(new PSBaseConstructor(ci, PSName) { Reflector = this });
             }
             else
             {
-                bool isStatic;
-                PSMemberInfo psMember;
-                switch (MemberInfo)
+                PSMemberInfo psMember = MemberInfo switch
                 {
-                    case FieldInfo mi:
-                        isStatic = mi.IsStatic;
-                        psMember = new PSBaseField(mi, PSName, CanWrite,
-                            _types.ContainsKey(mi.FieldType) ? this : null);
-                        break;
-                    case PropertyInfo mi:
-                        isStatic = mi.GetMethod?.IsStatic == true;
-                        psMember = new PSBaseProperty(mi, PSName, CanWrite,
-                            _types.ContainsKey(mi.PropertyType) ? this : null);
-                        break;
-                    case MethodInfo mi:
-                        isStatic = mi.IsStatic;
-                        psMember = new PSBaseMethod(mi, PSName,
-                            _types.ContainsKey(mi.ReturnType) ? this : null);
-                        break;
-                    default:
-                        throw new UnreachableException();
+                    FieldInfo mi => new PSBaseField(mi, PSName, CanWrite),
+                    PropertyInfo mi => new PSBaseProperty(mi, PSName, CanWrite),
+                    MethodInfo mi => new PSBaseMethod(mi, PSName),
+                    _ => throw new UnreachableException(),
+                };
+                IPSBaseMemberInfo psBaseMember = (IPSBaseMemberInfo)psMember;
+                var returnType = psBaseMember.ReturnType;
+                if (_registeredTypes.ContainsKey(returnType) || _additionalTypes.ContainsKey(returnType))
+                {
+                    psBaseMember.Reflector = this;
                 }
                 instanceMembers.Add(psMember);
-                if (isStatic) typeMembers.Add(psMember);
+                if (psBaseMember.IsStatic) typeMembers.Add(psMember);
             }
         }
-        lock (typeInfo)
+        lock (typeDescriptor)
         {
-            if (!typeInfo.IsInitialized)
+            if (typeDescriptor.Version < version)
             {
-                typeInfo.Constructors = constructors;
-                typeInfo.InstanceMembers = instanceMembers;
-                typeInfo.TypeMembers = typeMembers;
-                // We keep Pending around to allow some kind of Refresh to be implemented.
-                // That would be useful if types are added after Wrap() has been called and
-                // auto-wrapping of return values needs to be re-determined.
-                typeInfo.IsInitialized = true;
+                typeDescriptor.InstanceMembers = instanceMembers;
+                typeDescriptor.TypeMembers = typeMembers;
+                typeDescriptor.Version = version;
             }
         }
-    }
-
-    private static bool IsAllowedType(Type? type)
-    {
-        if (type is null) return false;
-        if (type.IsInterface || type.IsArray || type.ContainsGenericParameters) return false;
-        return true;
     }
 
     private static bool IsAllowedMemberInfo(Type type, MemberInfo memberInfo)
@@ -302,31 +303,40 @@ public class Reflector
         return true;
     }
 
-    private static MemberInfo? FindMemberInfo(Type type, MemberDescriptor member)
+    private static bool FindMemberInfo(Type type, string name, int? paramCount, bool caseSensitive, List<MemberInfo> results)
     {
-        if (string.IsNullOrEmpty(member.Name)) return null;
-        var mt = member.Name == ".ctor"
+        results.Clear();
+        var mt = name == ".ctor"
             ? MemberTypes.Constructor
-            : member.ParamCount.HasValue
+            : paramCount.HasValue
                 ? MemberTypes.Method | MemberTypes.Constructor
                 : MemberDescriptor.AllowedMemberTypes;
-        var candidates = type.GetMember(member.Name, mt,
-            BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-        MemberInfo? found = null;
+        var bf = caseSensitive
+            ? BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.FlattenHierarchy
+            : BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase;
+        var candidates = type.GetMember(name, mt, bf);
+        int exactMatches = 0;
         foreach (var candidate in candidates)
         {
             if (!IsAllowedMemberInfo(type, candidate)) continue;
-            if (!member.ParamCount.HasValue
+            if (!paramCount.HasValue
                 || candidate is not MethodBase mb
-                || mb.GetParameters().Length == member.ParamCount.Value)
+                || mb.GetParameters().Length == paramCount.Value)
             {
-                if (found is not null) return null;
-                found = candidate;
+                if (caseSensitive || name == candidate.Name)
+                {
+                    results.Insert(exactMatches++, candidate);
+                }
+                else
+                {
+                    results.Add(candidate);
+                }
             }
         }
-        return found;
+        if (exactMatches != 0)
+        {
+            results.RemoveRange(exactMatches, results.Count - exactMatches);
+        }
+        return results.Count == 1;
     }
-
-    [DoesNotReturn]
-    private static void ThrowMembersArgumentException() => throw new ArgumentException(null, "members");
 }
