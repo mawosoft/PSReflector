@@ -23,7 +23,10 @@ namespace System.Diagnostics.CodeAnalysis
     [Embedded]
     internal sealed class DoesNotReturnAttribute : Attribute;
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Field
+                    | AttributeTargets.Parameter
+                    | AttributeTargets.Property
+                    | AttributeTargets.ReturnValue, Inherited = false)]
     [Embedded]
     internal sealed class NotNullAttribute : Attribute;
 }
@@ -50,11 +53,14 @@ namespace Mawosoft.PSReflector
     {
         extension(ArgumentNullException)
         {
-            public static void ThrowIfNull([NotNull] object? argument, [CallerArgumentExpression(nameof(argument))] string? paramName = null)
+            public static void ThrowIfNull(
+                [NotNull] object? argument,
+                [CallerArgumentExpression(nameof(argument))] string? paramName = null)
             {
                 if (argument is null) Throw(paramName);
 
-                [DoesNotReturn] static void Throw(string? paramName) => throw new ArgumentNullException(paramName);
+                [DoesNotReturn]
+                static void Throw(string? paramName) => throw new ArgumentNullException(paramName);
             }
         }
     }

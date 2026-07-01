@@ -5,8 +5,6 @@ using System.Management.Automation;
 using System.Reflection;
 using System.Text;
 
-using static Mawosoft.PSReflector.PSBaseMemberFormatter;
-
 namespace Mawosoft.PSReflector;
 
 public sealed class PSBaseProperty : PSPropertyInfo, IPSBaseMemberInfo
@@ -44,7 +42,7 @@ public sealed class PSBaseProperty : PSPropertyInfo, IPSBaseMemberInfo
     {
         var sb = new StringBuilder();
         if (_isStatic) sb.Append("static ");
-        Format(sb, _propertyInfo.PropertyType);
+        PSBaseMemberFormatter.Format(sb, _propertyInfo.PropertyType);
         sb.Append(' ').Append(_propertyInfo.Name).Append(" {get;");
         if (_canWrite) sb.Append("set;");
         sb.Append('}');

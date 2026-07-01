@@ -12,11 +12,14 @@ namespace Mawosoft.PSReflector;
 #pragma warning disable CA1716 // Identifiers should not match keywords
 internal static class Throw
 {
-    public static void IfNullOrEmpty([NotNull] object?[]? array, [CallerArgumentExpression(nameof(array))] string? paramName = null)
+    public static void IfNullOrEmpty(
+        [NotNull] object?[]? array,
+        [CallerArgumentExpression(nameof(array))] string? paramName = null)
     {
         if (array is null) throw new ArgumentNullException(paramName);
         if (array.Length == 0) throw new ArgumentException("Array cannot be empty.", paramName);
-        if (Array.IndexOf(array, null) >= 0) throw new ArgumentNullException(paramName, "Array element cannot be null.");
+        if (Array.IndexOf(array, null) >= 0)
+            throw new ArgumentNullException(paramName, "Array element cannot be null.");
     }
 
     [DoesNotReturn]

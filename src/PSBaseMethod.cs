@@ -5,8 +5,6 @@ using System.Collections.ObjectModel;
 using System.Management.Automation;
 using System.Reflection;
 
-using static Mawosoft.PSReflector.PSBaseMemberFormatter;
-
 namespace Mawosoft.PSReflector;
 
 public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
@@ -27,7 +25,7 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
         return _reflector is null ? retval : _reflector.Wrap(retval);
     }
 
-    public override string ToString() => Format(_methodInfo);
+    public override string ToString() => PSBaseMemberFormatter.Format(_methodInfo);
 
     internal PSBaseMethod(MethodInfo info, string? name)
     {
