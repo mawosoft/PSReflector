@@ -7,15 +7,12 @@ using System.Reflection;
 
 namespace Mawosoft.PSReflector;
 
-public sealed partial class Reflector
+internal sealed class TypeDescriptor
 {
-    private sealed class TypeDescriptor
-    {
-        public Type Type { get; set; }
-        public List<(string PSName, MemberInfo MemberInfo, bool CanWrite)> MemberDescriptors { get; set; } = [];
-        public List<PSMemberInfo> InstanceMembers { get; set; } = null!;
-        public List<PSMemberInfo> TypeMembers { get; set; } = null!;
-        public int Version { get; set; }
-        public TypeDescriptor(Type type) => Type = type;
-    }
+    public Type Type { get; set; }
+    public List<(string PSName, MemberInfo MemberInfo, bool CanWrite)> MemberDescriptors { get; set; } = [];
+    public List<PSMemberInfo> InstanceMembers { get; set; } = null!;
+    public List<PSMemberInfo> TypeMembers { get; set; } = null!;
+    public int Version { get; set; }
+    public TypeDescriptor(Type type) => Type = type;
 }
