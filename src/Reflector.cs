@@ -16,7 +16,8 @@ namespace Mawosoft.PSReflector;
 /// </summary>
 public sealed class Reflector
 {
-    internal static readonly Func<object, bool, PSObject> PSObjectAsPSObject2Delegate = (Func<object, bool, PSObject>?)
+    internal static readonly Func<object, bool, PSObject> PSObjectAsPSObject2Delegate =
+        (Func<object, bool, PSObject>?)
         typeof(PSObject).GetMethod(nameof(PSObject.AsPSObject), BindingFlags.NonPublic | BindingFlags.Static,
                                    binder: null, [typeof(object), typeof(bool)], modifiers: null)?
         .CreateDelegate(typeof(Func<object, bool, PSObject>))
@@ -127,10 +128,7 @@ public sealed class Reflector
                     {
                         for (var t = type.BaseType; t is not null; t = t.BaseType)
                         {
-                            if (t.IsAbstract)
-                            {
-                                _additionalTypes.TryAdd(t, false);
-                            }
+                            if (t.IsAbstract) _additionalTypes.TryAdd(t, false);
                         }
                     }
                     return typeDescriptor;
@@ -161,9 +159,9 @@ public sealed class Reflector
     /// <see cref="PSObject"/>. The wrapper exposes all registered non-public instance <b>and static</b>
     /// members as public instance properties and methods. Non-public constructors are not
     /// added in this case.<br />
-    /// - If <paramref name="obj"/> is a registered type itself, it is also wrapped in a new <see cref="PSObject"/>.
-    /// This wrapper exposes only the registered non-public static members and non-public constructors,
-    /// but still as instance properties and methods.<br />
+    /// - If <paramref name="obj"/> is a registered type itself, it is also wrapped in a new
+    /// <see cref="PSObject"/>. This wrapper exposes only the registered non-public static members and
+    /// non-public constructors, but still as instance properties and methods.<br />
     /// - If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
     /// </returns>
     public object? Wrap(object? obj)
@@ -303,7 +301,12 @@ public sealed class Reflector
         return true;
     }
 
-    private static bool FindMemberInfo(Type type, string name, int? paramCount, bool caseSensitive, List<MemberInfo> results)
+    private static bool FindMemberInfo(
+        Type type,
+        string name,
+        int? paramCount,
+        bool caseSensitive,
+        List<MemberInfo> results)
     {
         results.Clear();
         var mt = name == ".ctor"
@@ -312,8 +315,10 @@ public sealed class Reflector
                 ? MemberTypes.Method | MemberTypes.Constructor
                 : MemberDescriptor.AllowedMemberTypes;
         var bf = caseSensitive
-            ? BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.FlattenHierarchy
-            : BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase;
+            ? BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static
+              | BindingFlags.FlattenHierarchy
+            : BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static
+              | BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase;
         var candidates = type.GetMember(name, mt, bf);
         int exactMatches = 0;
         foreach (var candidate in candidates)

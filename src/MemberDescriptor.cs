@@ -51,7 +51,8 @@ public sealed class MemberDescriptor
     public int? ParamCount { get; set; }
 
     /// <summary>
-    /// A unique member info. If specified, it takes precedence over <see cref="Name"/> and <see cref="ParamCount"/>.
+    /// A unique member info. If specified, it takes precedence over <see cref="Name"/> and
+    /// <see cref="ParamCount"/>.
     /// </summary>
     public MemberInfo? MemberInfo { get; set; }
 
