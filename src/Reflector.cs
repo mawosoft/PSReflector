@@ -241,7 +241,9 @@ public sealed class Reflector
         {
             if (MemberInfo is ConstructorInfo ci)
             {
-                typeMembers.Add(new PSBaseConstructor(ci, PSName) { Reflector = this });
+                var psMember = new PSBaseConstructor(ci, PSName);
+                ((IPSBaseMemberInfo)psMember).Reflector = this;
+                typeMembers.Add(psMember);
             }
             else
             {

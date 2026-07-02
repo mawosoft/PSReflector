@@ -41,9 +41,9 @@ public sealed class PSBaseConstructor : PSMethodInfo, IPSBaseMemberInfo
 
     // IPSBaseMemberInfo
 
-    public MemberInfo MemberInfo => _ctorInfo;
-    public Type ReturnType => _ctorInfo.ReflectedType;
-    public bool IsStatic => _ctorInfo.IsStatic;
-    public bool CanWrite => false;
-    public Reflector? Reflector { get => _reflector; set => _reflector = value; }
+    MemberInfo IPSBaseMemberInfo.MemberInfo => _ctorInfo;
+    Type IPSBaseMemberInfo.ReturnType => _ctorInfo.ReflectedType;
+    bool IPSBaseMemberInfo.IsStatic => _ctorInfo.IsStatic;
+    bool IPSBaseMemberInfo.CanWrite => false;
+    Reflector? IPSBaseMemberInfo.Reflector { get => _reflector; set => _reflector = value; }
 }
