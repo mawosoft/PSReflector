@@ -70,9 +70,9 @@ public sealed class PSBaseProperty : PSPropertyInfo, IPSBaseMemberInfo
 
     // IPSBaseMemberInfo
 
-    public MemberInfo MemberInfo => _propertyInfo;
-    public Type ReturnType => _propertyInfo.PropertyType;
-    public bool IsStatic => _isStatic;
-    public bool CanWrite => _canWrite;
-    public Reflector? Reflector { get => _reflector; set => _reflector = value; }
+    MemberInfo IPSBaseMemberInfo.MemberInfo => _propertyInfo;
+    Type IPSBaseMemberInfo.ReturnType => _propertyInfo.PropertyType;
+    bool IPSBaseMemberInfo.IsStatic => _isStatic;
+    bool IPSBaseMemberInfo.CanWrite => _canWrite;
+    Reflector? IPSBaseMemberInfo.Reflector { get => _reflector; set => _reflector = value; }
 }
