@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <NetFxTfm Condition="'$(NetFxTfm)' == ''">net48</NetFxTfm>
+    <NetFxTfm Condition="! $([MSBuild]::IsOSPlatform('windows'))"></NetFxTfm>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputType>exe</OutputType>
+    <TargetFrameworks>net10.0;$(NetFxTfm)</TargetFrameworks>
+    <RootNamespace>Mawosoft.PSReflector</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <EnableGitCommitCount>false</EnableGitCommitCount>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformCaptureOutput>false</TestingPlatformCaptureOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Mawosoft.PSReflector/Mawosoft.PSReflector.csproj" />
+    <ProjectReference Include="../Mawosoft.PSReflector.TestTypes/Mawosoft.PSReflector.TestTypes.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Needed for dynamic binding -->
+    <Reference Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'" Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'" Include="Microsoft.PowerShell.5.1.ReferenceAssemblies" />
+    <PackageReference Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework'" Include="System.Management.Automation" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+
+</Project>

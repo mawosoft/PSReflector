@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <PackageVersion Include="PowerShellStandard.Library" Version="5.1.1" />
+    <PackageVersion Include="Microsoft.PowerShell.5.1.ReferenceAssemblies" Version="1.0.0" />
+    <PackageVersion Include="System.Management.Automation" Version="7.6.3" />
+    <PackageVersion Include="xunit.v3.mtp-v2" Version="3.2.2" />
   </ItemGroup>
 
 </Project>

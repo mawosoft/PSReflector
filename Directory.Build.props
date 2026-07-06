@@ -10,6 +10,7 @@
     <ContinuousIntegrationBuild>$(CI)</ContinuousIntegrationBuild>
     <Deterministic>$(CI)</Deterministic>
     <TreatWarningsAsErrors>$(CI)</TreatWarningsAsErrors>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
   </PropertyGroup>
 
   <PropertyGroup>
