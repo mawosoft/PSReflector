@@ -24,7 +24,11 @@ jobs:
     outputs:
       deploy: ${{ steps.set_output.outputs.deploy }}
       release: ${{ steps.set_output.outputs.release }}
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -36,21 +40,33 @@ jobs:
       with:
         global-json-file: ./global.json
     - name: Build
+      id: build
+      env:
+        MSBuildDebugEngine: 1
+        MSBUILDLOGTASKINPUTS: 1
+        MSBUILDDEBUGPATH: ./artifacts/binlog
       run: |
         $ErrorActionPreference = 'Stop'
         $PSNativeCommandUseErrorActionPreference = $true
-        dotnet restore ./src/PSReflector.csproj
-        dotnet build ./src/PSReflector.csproj -c Debug --no-restore --no-dependencies
-        dotnet build ./src/PSReflector.csproj -c Release --no-restore --no-dependencies
-        dotnet pack ./src/PSReflector.csproj -c Release --no-build -o ./Packages
+        dotnet restore
+        dotnet build -c Debug --no-restore
+        dotnet build -c Release --no-restore
+        dotnet pack ./src/Mawosoft.PSReflector/Mawosoft.PSReflector.csproj -c Release --no-build
+    - name: Upload Binlogs
+      if: ${{ failure() && steps.build.conclusion == 'failure' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ matrix.os }}-binlogs
+        path: './artifacts/binlog/*'
     - name: Upload Packages
+      if: ${{ matrix.os == 'ubuntu-latest' || strategy.job-total == 1 }}
       uses: actions/upload-artifact@v7
       with:
         name: Packages
-        path: ./Packages/
+        path: ./artifacts/package/release
     - name: Set Deployment and Release Outputs
       id: set_output
-      if: ${{ github.event_name == 'push' }}
+      if: ${{ github.event_name == 'push' && (matrix.os == 'ubuntu-latest' || strategy.job-total == 1) }}
       run: |
         [string] $semver = '^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
         $docElement = (select-xml -Path ./Directory.Build.props -XPath "/*").Node
@@ -71,6 +87,43 @@ jobs:
         Write-Host "Version: $version, Deploy: $deploy, Release: $release"
         echo "deploy=$deploy" >>$env:GITHUB_OUTPUT
         echo "release=$release" >>$env:GITHUB_OUTPUT
+    - name: Test
+      id: test
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $PSNativeCommandUseErrorActionPreference = $true
+        dotnet test -c Debug --no-build --report-xunit-html
+        dotnet test -c Release --no-build --report-xunit-html
+    - name: Upload Test Results
+      if: ${{ failure() && steps.test.conclusion == 'failure' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ matrix.os }}-testresults
+        path: './artifacts/bin/Mawosoft.PSReflector.Tests/*/TestResults/*'
+    - name: Coverage
+      if: ${{ matrix.os == 'ubuntu-latest' || strategy.job-total == 1 }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $PSNativeCommandUseErrorActionPreference = $true
+        $exe = $IsWindows ? '.exe' : ''
+        dotnet tool restore
+        $param = @(
+          "./artifacts/bin/Mawosoft.PSReflector.Tests/debug_net10.0/Mawosoft.PSReflector.Tests$exe"
+          '--settings', './tests/Mawosoft.PSReflector.Tests/dotnet-coverage-settings.xml'
+          '--output-format', 'cobertura'
+          '--output', './artifacts/coverage/dnc-cobertura.xml'
+        )
+        dotnet dotnet-coverage collect $param
+    - name: Upload to codecov
+      if: ${{ matrix.os == 'ubuntu-latest' || strategy.job-total == 1 }}
+      uses: codecov/codecov-action@v7
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./artifacts/coverage/dnc-cobertura.xml
+        disable_search: true
+        disable_telem: true
+        verbose: false
+        fail_ci_if_error: true
 
   Deploy:
     needs: Build
