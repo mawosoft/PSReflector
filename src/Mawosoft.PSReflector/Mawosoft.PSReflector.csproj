@@ -8,8 +8,6 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <RootNamespace>Mawosoft.PSReflector</RootNamespace>
-    <AssemblyName>$(RootNamespace)</AssemblyName>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -27,6 +25,10 @@
     <PackageReference Include="PowerShellStandard.Library" PrivateAssets="All" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+  </ItemGroup>
+
   <!--
     ============================================================
 
@@ -42,15 +44,9 @@
     ============================================================
   -->
 
-  <PropertyGroup>
-    <!-- This is used as the source for Pack via Compress-PSResource and therefore must match the module name. -->
-    <PublishDirName>$(PSModuleName)</PublishDirName>
-  </PropertyGroup>
-
   <ItemGroup>
-    <PSModuleManifest Include="$(PSModuleName).psd1" />
-    <PSAdditionalFiles Include="$(PSModuleName).psm1" />
-    <PSAdditionalFiles Include="*.ps1xml" />
+    <PSModuleManifest Include="../$(PSModuleName).psd1" />
+    <PSAdditionalFiles Include="../$(PSModuleName).psm1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -84,7 +80,7 @@
           Condition="Exists('@(IntermediateAssembly)')">
     <PropertyGroup>
       <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp;
-        '../build/updatePSModuleManifestVersion.ps1'
+        '../../build/updatePSModuleManifestVersion.ps1'
           -Path '%(PSModuleManifest.FullPath)'
           -Destination '$(IntermediateOutputPath)'
           -Version '$(Version)'
