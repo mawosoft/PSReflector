@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="./src/Mawosoft.PSReflector/Mawosoft.PSReflector.csproj" />
+  <Project Path="./tests/Mawosoft.PSReflector.Tests/Mawosoft.PSReflector.Tests.csproj" />
+  <Project Path="./tests/Mawosoft.PSReflector.TestTypes/Mawosoft.PSReflector.TestTypes.csproj" />
 </Solution>
