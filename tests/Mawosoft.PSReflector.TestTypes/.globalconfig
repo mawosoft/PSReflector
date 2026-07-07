@@ -6,6 +6,9 @@ is_global = true
 # CA1802: Use literals where appropriate
 dotnet_diagnostic.CA1802.severity = silent
 
+# CA1812: Avoid uninstantiated internal classes
+dotnet_diagnostic.CA1812.severity = none
+
 # CA1815: Override equals and operator equals on value types
 dotnet_diagnostic.CA1815.severity = silent
 
