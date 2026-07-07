@@ -43,7 +43,7 @@ internal static class Throw
     {
         throw new ArgumentException(
             $"The reflected type {descriptor.MemberInfo!.ReflectedType}"
-            + " in the MemberInfo of {descriptor} is not assignable to {type}.",
+            + $" in the MemberInfo of {descriptor} is not assignable to {type}.",
             paramName);
     }
 
