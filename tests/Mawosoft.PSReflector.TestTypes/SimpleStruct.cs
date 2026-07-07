@@ -91,6 +91,24 @@ public struct SimpleStruct : ILastCallInfoProvider, IMemberAccessor
         return LastCallInfo.MemberName;
     }
 
+    internal string Overload1(int p1)
+    {
+        LastCallInfo = new CallInfo([p1]);
+        return LastCallInfo.MemberName;
+    }
+
+    internal string Overload1(int p1, int p2)
+    {
+        LastCallInfo = new CallInfo([p1, p2]);
+        return LastCallInfo.MemberName;
+    }
+
+    internal string Overload1(string p1)
+    {
+        LastCallInfo = new CallInfo([p1]);
+        return LastCallInfo.MemberName;
+    }
+
     // ILastCallInfoProvider
 
     [ThreadStatic]
