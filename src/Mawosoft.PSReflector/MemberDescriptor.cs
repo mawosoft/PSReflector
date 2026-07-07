@@ -75,29 +75,40 @@ public sealed class MemberDescriptor
     {
         var sb = new StringBuilder();
         sb.Append(nameof(MemberDescriptor)).Append(" { ");
+        bool comma = false;
         if (Name is null && MemberInfo is null)
         {
             sb.Append(nameof(Name)).Append(": null");
+            comma = true;
         }
         else if (Name is not null)
         {
             sb.Append(nameof(Name)).Append(": ").Append(Name);
+            comma = true;
         }
         if (PSName is not null)
         {
-            sb.Append(", ").Append(nameof(PSName)).Append(": ").Append(PSName);
+            if (comma) sb.Append(", ");
+            sb.Append(nameof(PSName)).Append(": ").Append(PSName);
+            comma = true;
         }
         if (ParamCount.HasValue)
         {
-            sb.Append(", ").Append(nameof(ParamCount)).Append(": ").Append(ParamCount.Value);
+            if (comma) sb.Append(", ");
+            sb.Append(nameof(ParamCount)).Append(": ").Append(ParamCount.Value);
+            comma = true;
         }
         if (MemberInfo is not null)
         {
-            sb.Append(", ").Append(nameof(MemberInfo)).Append(": ").Append(MemberInfo.ToString());
+            if (comma) sb.Append(", ");
+            sb.Append(nameof(MemberInfo)).Append(": ").Append(MemberInfo.ToString());
+            comma = true;
         }
         if (CanWrite)
         {
-            sb.Append(", ").Append(nameof(CanWrite)).Append(": true");
+            if (comma) sb.Append(", ");
+            sb.Append(nameof(CanWrite)).Append(": true");
+            comma = true;
         }
         sb.Append(" }");
         return sb.ToString();
