@@ -2,4 +2,5 @@
     "explorer.sortOrderLexicographicOptions": "upper",
     "editor.suggest.showWords": false,
     "editor.occurrencesHighlight": "off",
+    "git.detectWorktrees": true,
 }

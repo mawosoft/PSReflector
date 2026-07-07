@@ -9,8 +9,5 @@ updates:
   - package-ecosystem: "nuget"
     directories:
       - "/"
-      - "/src/Mawosoft.PSReflector"
-      - "/tests/Mawosoft.PSReflector.Tests"
-      - "/tests/Mawosoft.PSReflector.TestTypes"
     schedule:
       interval: "weekly"
