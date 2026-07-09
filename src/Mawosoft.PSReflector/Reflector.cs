@@ -40,7 +40,7 @@ public sealed class Reflector
     public ICollection<Type> AdditionalTypes => _additionalTypes.Keys;
 
     /// <summary>
-    /// Registers non-public type members to be exposed like public members via <see cref="Wrap(object?)"/>.
+    /// Registers non-public type members to be exposed like public members via <see cref="Expose(object?)"/>.
     /// </summary>
     /// <param name="types">
     /// An array of types whose non-public members are described by <paramref name="members"/>. 
@@ -164,13 +164,13 @@ public sealed class Reflector
     /// non-public constructors, but still as instance properties and methods.<br />
     /// - If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
     /// </returns>
-    public object? Wrap(object? obj)
+    public object? Expose(object? obj)
     {
         var o = obj is PSObject pso ? pso.BaseObject : obj;
         if (o is null) return obj;
         if (o is not Type type) type = o.GetType();
         if (!_registeredTypes.TryGetValue(type, out var typeDescriptor)) return obj;
-        return WrapObject(o, typeDescriptor);
+        return CreatePSObjectWithExposedMembers(o, typeDescriptor);
     }
 
     /// <summary>
@@ -196,7 +196,7 @@ public sealed class Reflector
     /// and non-public constructors, but still as instance properties and methods.<br />
     /// - If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
     /// </returns>
-    public object? Wrap(object? obj, Type fallbackType)
+    public object? Expose(object? obj, Type fallbackType)
     {
         var o = obj is PSObject pso ? pso.BaseObject : obj;
         if (o is null) return obj;
@@ -217,10 +217,10 @@ public sealed class Reflector
                 if (!fallbackType.IsAssignableFrom(type)) return obj;
             }
         }
-        return WrapObject(o, typeDescriptor);
+        return CreatePSObjectWithExposedMembers(o, typeDescriptor);
     }
 
-    private PSObject WrapObject(object obj, TypeDescriptor typeDescriptor)
+    private PSObject CreatePSObjectWithExposedMembers(object obj, TypeDescriptor typeDescriptor)
     {
         if (typeDescriptor.Version < _typesVersion) UpdateTypeDescriptor(typeDescriptor);
         var pso = PSObjectAsPSObject2Delegate(obj, true);

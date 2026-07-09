@@ -27,7 +27,7 @@ public sealed class PSBaseField : PSPropertyInfo, IPSBaseMemberInfo
         {
             var baseObject = _isStatic ? null : this.GetBaseObject();
             var retval = _fieldInfo.GetValue(baseObject);
-            return _reflector is null ? retval : _reflector.Wrap(retval);
+            return _reflector is null ? retval : _reflector.Expose(retval);
         }
 
         set

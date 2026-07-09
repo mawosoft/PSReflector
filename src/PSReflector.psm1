@@ -9,10 +9,10 @@
 .OUTPUTS
     [Mawosoft.PSReflector.Reflector] - A new instance of this type.
 #>
-function New-PSReflector {
+function New-Reflector {
     [OutputType([Mawosoft.PSReflector.Reflector])]
     param()
     [Mawosoft.PSReflector.Reflector]::new()
 }
 
-Export-ModuleMember -Function @('New-PSReflector')
+Export-ModuleMember -Function @('New-Reflector')
