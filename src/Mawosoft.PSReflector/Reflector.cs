@@ -34,8 +34,8 @@ public sealed class Reflector
     public bool IsTypeRegistered(Type type) => _registeredTypes.ContainsKey(type);
 
     /// <summary>
-    /// Returns a collection of additional types that trigger automatic wrapping of return values from
-    /// registered members.
+    /// Returns a collection of additional types that may cause registered members to automatically
+    /// expose non-public members on their return values.
     /// </summary>
     public ICollection<Type> AdditionalTypes => _additionalTypes.Keys;
 
@@ -44,22 +44,14 @@ public sealed class Reflector
     /// </summary>
     /// <param name="types">
     /// An array of types whose non-public members are described by <paramref name="members"/>. 
-    /// Types must be concrete (not abstract classes or interfaces), though static classes are permitted.
     /// </param>
     /// <param name="members">
     /// An array of <see cref="MemberDescriptor"/> instances that describe the non-public members to expose.
     /// </param>
     /// <param name="caseSensitive">
     /// <c>true</c> to perform a case-sensitive search for member names. The default is <c>false</c>, which
-    /// performs a case-insensitive search to match PowerShell's behavior. If a case-insensitive search is
-    /// ambiguous, a single case-sensitive match will resolve the ambiguity.
+    /// performs a case-insensitive search to match PowerShell's behavior.
     /// </param>
-    /// <remarks>
-    /// - You can invoke this method multiple times to cumulatively register different members for the same
-    /// type.<br/>
-    /// - Passing an array of types allows you to conveniently register shared interface members across several
-    /// implementing types in a single call.
-    /// </remarks>
     public void Register(Type[] types, MemberDescriptor[] members, bool caseSensitive = false)
     {
         Throw.IfNullOrEmpty(types);
@@ -148,22 +140,15 @@ public sealed class Reflector
     }
 
     /// <summary>
-    /// Returns <paramref name="obj"/> wrapped in a new <see cref="PSObject"/> if <paramref name="obj"/>
-    /// is an instance of a registered type, or the registered type itself. The type must have been 
-    /// previously registered via <see cref="Register(Type[], MemberDescriptor[], bool)"/>.
-    /// Otherwise, it returns the same <paramref name="obj"/> unchanged.
+    /// Returns <paramref name="obj"/> as a new <see cref="PSObject"/> with registered non-public members
+    /// exposed as public instance properties and methods.
     /// </summary>
-    /// <param name="obj">The object to wrap.</param>
-    /// <returns>
-    /// - If <paramref name="obj"/> is an instance of a registered type, it is wrapped in a new
-    /// <see cref="PSObject"/>. The wrapper exposes all registered non-public instance <b>and static</b>
-    /// members as public instance properties and methods. Non-public constructors are not
-    /// added in this case.<br />
-    /// - If <paramref name="obj"/> is a registered type itself, it is also wrapped in a new
-    /// <see cref="PSObject"/>. This wrapper exposes only the registered non-public static members and
-    /// non-public constructors, but still as instance properties and methods.<br />
-    /// - If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
-    /// </returns>
+    /// <remarks>
+    /// The method returns an extended <see cref="PSObject"/> only if <paramref name="obj"/> is an
+    /// instance of a registered type, or a registered type itself.<br/>
+    /// If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
+    /// </remarks>
+    /// <param name="obj">The object whose non-public members to expose.</param>
     public object? Expose(object? obj)
     {
         var o = obj is PSObject pso ? pso.BaseObject : obj;
@@ -174,28 +159,20 @@ public sealed class Reflector
     }
 
     /// <summary>
-    /// Returns <paramref name="obj"/> wrapped in a new <see cref="PSObject"/> if it is 
-    /// an instance of a registered type, the type itself, or if it can be cast to the 
-    /// <paramref name="fallbackType"/>. Types must have been previously registered via 
-    /// <see cref="Register(Type[], MemberDescriptor[], bool)"/>.
-    /// Otherwise, it returns the same <paramref name="obj"/> unchanged.
+    /// Returns <paramref name="obj"/> as a new <see cref="PSObject"/> with registered non-public members
+    /// exposed as public instance properties and methods.
     /// </summary>
-    /// <param name="obj">The object to wrap.</param>
+    /// <remarks>
+    /// The method returns an extended <see cref="PSObject"/> only if <paramref name="obj"/> is an
+    /// instance of a registered type, a registered type itself, or if it can be cast to the registered
+    /// <paramref name="fallbackType"/>.<br/>
+    /// If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
+    /// </remarks>
+    /// <param name="obj">The object whose non-public members to expose.</param>
     /// <param name="fallbackType">
     /// A previously registered type to use as a fallback if the type of <paramref name="obj"/>
     /// is not registered.
     /// </param>
-    /// <returns>
-    /// - If <paramref name="obj"/> is an instance of a registered type, or if it can be cast to 
-    /// <paramref name="fallbackType"/>, it is wrapped in a new <see cref="PSObject"/>. 
-    /// This wrapper exposes all registered non-public instance <b>and static</b> members 
-    /// (from either its own type or the fallback type) as public instance properties and methods. 
-    /// Non-public constructors are not added in this case.<br />
-    /// - If <paramref name="obj"/> is a registered type itself, it is also wrapped in a new
-    /// <see cref="PSObject"/>. This wrapper exposes only the registered non-public static members
-    /// and non-public constructors, but still as instance properties and methods.<br />
-    /// - If <paramref name="obj"/> is something else (including <c>null</c>), it is returned unchanged.
-    /// </returns>
     public object? Expose(object? obj, Type fallbackType)
     {
         var o = obj is PSObject pso ? pso.BaseObject : obj;
