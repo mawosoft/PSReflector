@@ -15,7 +15,7 @@
         'Mawosoft.PSReflector.dll'
     )
     FunctionsToExport    = @(
-        'New-PSReflector'
+        'New-Reflector'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

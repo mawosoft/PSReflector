@@ -22,7 +22,7 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
     {
         var baseObject = _isStatic ? null : this.GetBaseObject();
         var retval = _methodInfo.Invoke(baseObject, arguments);
-        return _reflector is null ? retval : _reflector.Wrap(retval);
+        return _reflector is null ? retval : _reflector.Expose(retval);
     }
 
     public override string ToString() => PSBaseMemberFormatter.Format(_methodInfo);

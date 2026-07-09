@@ -20,7 +20,7 @@ public sealed class PSBaseConstructor : PSMethodInfo, IPSBaseMemberInfo
     public override object? Invoke(params object[] arguments)
     {
         var retval = _ctorInfo.Invoke(arguments);
-        return _reflector is null ? retval : _reflector.Wrap(retval);
+        return _reflector is null ? retval : _reflector.Expose(retval);
     }
 
     public override string ToString() => PSBaseMemberFormatter.Format(_ctorInfo);
