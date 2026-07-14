@@ -41,13 +41,12 @@ jobs:
         global-json-file: ./global.json
     - name: Build
       id: build
-      env:
-        MSBuildDebugEngine: 1
-        MSBUILDLOGTASKINPUTS: 1
-        MSBUILDDEBUGPATH: ./artifacts/binlog
       run: |
         $ErrorActionPreference = 'Stop'
         $PSNativeCommandUseErrorActionPreference = $true
+        $env:MSBuildDebugEngine = 1
+        $env:MSBUILDLOGTASKINPUTS = 1
+        $env:MSBUILDDEBUGPATH = Join-Path $env:GITHUB_WORKSPACE 'artifacts/binlog'
         dotnet restore
         dotnet build -c Debug --no-restore
         dotnet build -c Release --no-restore
@@ -58,6 +57,7 @@ jobs:
       with:
         name: ${{ matrix.os }}-binlogs
         path: './artifacts/binlog/*'
+        include-hidden-files: true
     - name: Upload Packages
       if: ${{ matrix.os == 'ubuntu-latest' || strategy.job-total == 1 }}
       uses: actions/upload-artifact@v7
