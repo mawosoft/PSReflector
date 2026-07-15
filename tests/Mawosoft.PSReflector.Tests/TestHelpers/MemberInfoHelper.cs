@@ -82,4 +82,12 @@ internal ref struct MemberInfoHelper
     public readonly MethodInfo GetMethod(string name, Type[] types)
         => Type.GetMethod(name, BindingFlags, binder: null, types, modifiers: null)
         ?? throw new MissingMemberException(Type.ToString(), name);
+
+    public readonly MemberInfo GetMember(string name)
+    {
+        var members = Type.GetMember(name, BindingFlags);
+        if (members.Length == 1) return members[0];
+        if (members.Length == 0) throw new MissingMemberException(Type.ToString(), name);
+        throw new AmbiguousMatchException("Ambigous match: {name} of {Type}.");
+    }
 }
