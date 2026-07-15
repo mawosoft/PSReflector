@@ -37,6 +37,7 @@ public class ReflectorExposeTests
         // TODO Current impl requires fallbackType to be registered if instance is not a type.
         //      It does *not* require instance to be castable to fallbackType.
         //      Review impl and testdata.
+        _ = fallbackType;
         //if (fallbackType is not null)
         //{
         //    obj = reflector.Expose(instance, fallbackType);
