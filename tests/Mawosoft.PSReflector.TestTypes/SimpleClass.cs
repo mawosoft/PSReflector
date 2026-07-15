@@ -4,8 +4,8 @@ using System;
 
 namespace Mawosoft.PSReflector.TestTypes;
 
-// Members must match SimpleStruct (except for ILastCallInfoProvider implementation).
-public class SimpleClass : LastCallInfoProvider, IMemberAccessor
+// Members must match SimpleStruct
+public class SimpleClass : ILastCallInfoProvider, IMemberAccessor
 {
     internal const int ConstField = 101;
     internal static readonly int StaticReadOnlyField = 102;
@@ -18,7 +18,6 @@ public class SimpleClass : LastCallInfoProvider, IMemberAccessor
     {
         get { LastCallInfoStatic2 = new CallInfo([]); return s_staticReadonlyProperty; }
     }
-
 
     internal static int StaticProperty
     {
@@ -91,22 +90,23 @@ public class SimpleClass : LastCallInfoProvider, IMemberAccessor
         return LastCallInfo.MemberName;
     }
 
-    internal string Overload1(int p1)
+    // ILastCallInfoProvider
+
+    [ThreadStatic]
+    private static CallInfo? s_lastCallInfoStatic;
+
+    public static CallInfo? LastCallInfoStatic2
     {
-        LastCallInfo = new CallInfo([p1]);
-        return LastCallInfo.MemberName;
+        get => s_lastCallInfoStatic;
+        set => s_lastCallInfoStatic = value;
     }
 
-    internal string Overload1(int p1, int p2)
-    {
-        LastCallInfo = new CallInfo([p1, p2]);
-        return LastCallInfo.MemberName;
-    }
+    public CallInfo? LastCallInfo { get; set; }
 
-    internal string Overload1(string p1)
+    public CallInfo? LastCallInfoStatic
     {
-        LastCallInfo = new CallInfo([p1]);
-        return LastCallInfo.MemberName;
+        get => s_lastCallInfoStatic;
+        set => s_lastCallInfoStatic = value;
     }
 
     // IMemberAccessor
