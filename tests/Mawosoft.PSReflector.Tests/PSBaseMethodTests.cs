@@ -42,7 +42,7 @@ public class PSBaseMethodTests
 
     [Theory]
     [MemberData(nameof(Type_TheoryData))]
-    public void Ctor_Succeeds(Type type)
+    public void Ctor_SetsName(Type type)
     {
         var mih = new MemberInfoHelper(type);
         var mi = mih.GetMethod("Method1");

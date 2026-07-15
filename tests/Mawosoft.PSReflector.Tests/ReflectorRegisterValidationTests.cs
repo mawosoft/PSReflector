@@ -76,6 +76,7 @@ public class ReflectorRegisterValidationTests
 
     public static readonly TheoryData<string, Type> UnsupportedType_TheoryData = new(
     [
+        // TODO PSObject
         ("interface", typeof(IFormattable)),
         ("abstract", typeof(Stream)),
         ("open generics", typeof(Dictionary<,>)),
@@ -165,10 +166,23 @@ public class ReflectorRegisterValidationTests
     public void AmbiguousMember_Throws()
     {
         Reflector reflector = new();
-        Type[] types = [typeof(SimpleClass)];
+        Type[] types = [typeof(ClassWithOverloads)];
         MemberDescriptor member = new("Overload1");
         MemberDescriptor[] members = [new("Method1"), member];
         var ex = Assert.Throws<AmbiguousMatchException>(() => reflector.Register(types, members));
+        Assert.Contains(member.ToString(), ex.Message, StringComparison.Ordinal);
+        Assert.Contains(nameof(ClassWithOverloads), ex.Message, StringComparison.Ordinal);
+        Assert.Empty(reflector.RegisteredTypes);
+    }
+
+    [Fact]
+    public void PropertyWithPublicGetter_ByName_Throws()
+    {
+        Reflector reflector = new();
+        Type[] types = [typeof(SimpleClass)];
+        MemberDescriptor member = new("MixedProperty");
+        MemberDescriptor[] members = [new("Method1"), member];
+        var ex = Assert.Throws<MissingMemberException>(() => reflector.Register(types, members));
         Assert.Contains(member.ToString(), ex.Message, StringComparison.Ordinal);
         Assert.Contains(nameof(SimpleClass), ex.Message, StringComparison.Ordinal);
         Assert.Empty(reflector.RegisteredTypes);
