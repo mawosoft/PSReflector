@@ -6,7 +6,8 @@
   <CodeCoverage>
     <ModulePaths>
       <Include>
-        <ModulePath>.*Mawosoft\.PSReflector[^\\/]*\.dll$</ModulePath>
+        <ModulePath>.*Mawosoft\.PSReflector\.dll$</ModulePath>
+        <ModulePath>.*Mawosoft\.PSReflector\.Tests\.dll$</ModulePath>
       </Include>
     </ModulePaths>
     <Attributes>
