@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Management.Automation;
 using System.Reflection;
 using Mawosoft.PSReflector.TestHelpers;
 using Mawosoft.PSReflector.TestTypes;
@@ -76,11 +77,11 @@ public class ReflectorRegisterValidationTests
 
     public static readonly TheoryData<string, Type> UnsupportedType_TheoryData = new(
     [
-        // TODO PSObject
         ("interface", typeof(IFormattable)),
         ("abstract", typeof(Stream)),
         ("open generics", typeof(Dictionary<,>)),
         ("System.Type", typeof(Type)),
+        ("PSObject", typeof(PSObject)),
         ("array", typeof(SimpleClass[])),
         ("pointer", typeof(SimpleClass).MakePointerType()),
         ("by ref", typeof(SimpleClass).MakeByRefType()),

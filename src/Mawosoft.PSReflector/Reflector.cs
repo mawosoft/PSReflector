@@ -64,7 +64,8 @@ public sealed class Reflector
                 || type.IsInterface
                 || (type.IsAbstract && !type.IsSealed)
                 || type.ContainsGenericParameters
-                || typeof(Type).IsAssignableFrom(type))
+                || typeof(Type).IsAssignableFrom(type)
+                || typeof(PSObject).IsAssignableFrom(type))
             {
                 Throw.UnsupportedType(type, nameof(types));
             }
