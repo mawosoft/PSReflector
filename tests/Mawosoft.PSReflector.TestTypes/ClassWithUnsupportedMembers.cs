@@ -31,7 +31,7 @@ public class ClassWithUnsupportedMembers : ClassWithUnsupportedMembersBase
     public static MemberInfo[] GetUnsupportedMembers()
     {
         // We have to exclude accessor methods and companion fields for events.
-        BindingFlags bf = BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+        const BindingFlags bf = BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
         Type t = typeof(ClassWithUnsupportedMembers);
         return
         [

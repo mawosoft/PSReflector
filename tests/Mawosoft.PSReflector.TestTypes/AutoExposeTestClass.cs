@@ -10,20 +10,17 @@ public class AutoExposeTestClass
     internal IGenericInterface<int>? IGenericInterfaceField;
     internal IExplicitInterface? IExplicitInterfaceField;
     internal AbstractBaseClass? AbstractBaseClassField;
-    internal ConcreteBaseClass? ConcreteBaseClassField;
     internal DerivedClass? DerivedClassField;
 
     internal INonGenericInterface? INonGenericInterfaceProperty { get; set; }
     internal IGenericInterface<int>? IGenericInterfaceProperty { get; set; }
     internal IExplicitInterface? IExplicitInterfaceProperty { get; set; }
     internal AbstractBaseClass? AbstractBaseClassProperty { get; set; }
-    internal ConcreteBaseClass? ConcreteBaseClassProperty { get; set; }
     internal DerivedClass? DerivedClassProperty { get; set; }
 
     internal INonGenericInterface? INonGenericInterfaceMethod(INonGenericInterface? instance) => instance;
     internal IGenericInterface<int>? IGenericInterfaceMethod(IGenericInterface<int>? instance) => instance;
     internal IExplicitInterface? IExplicitInterfaceMethod(IExplicitInterface? instance) => instance;
     internal AbstractBaseClass? AbstractBaseClassMethod(AbstractBaseClass? instance) => instance;
-    internal ConcreteBaseClass? ConcreteBaseClassMethod(ConcreteBaseClass? instance) => instance;
     internal DerivedClass? DerivedClassMethod(DerivedClass? instance) => instance;
 }
