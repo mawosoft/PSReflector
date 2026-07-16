@@ -10,8 +10,7 @@ namespace Mawosoft.PSReflector;
 
 public class PSBasePropertyTests
 {
-    public static readonly TheoryData<Type> Type_TheoryData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)]);
+    public static readonly TheoryData<Type> Type_TheoryData = [typeof(SimpleClass), typeof(SimpleStruct)];
 
     public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new(
         [typeof(SimpleClass), typeof(SimpleStruct)],

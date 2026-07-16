@@ -10,8 +10,7 @@ namespace Mawosoft.PSReflector;
 
 public class PSBaseConstructorTests
 {
-    public static readonly TheoryData<Type> Type_TheoryData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)]);
+    public static readonly TheoryData<Type> Type_TheoryData = [typeof(SimpleClass), typeof(SimpleStruct)];
 
     public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new(
         [typeof(SimpleClass), typeof(SimpleStruct)],
@@ -101,25 +100,26 @@ public class PSBaseConstructorTests
     public void Invoke_Succeeds(Type type)
     {
         Assert.Multiple(
-        [
-            () => {
+            () =>
+            {
                 dynamic pso = Setup(type, [typeof(int), typeof(string)]);
                 object? instance = pso.TestMember(111, "foo");
                 Verify(type, instance, [111, "foo"]);
             },
-            () => {
+            () =>
+            {
                 dynamic pso = Setup(type, [typeof(int[])]);
-                int[] p1 = [1,2,3];
+                int[] p1 = [1, 2, 3];
                 object? instance = pso.TestMember(p1);
                 Verify(type, instance, [p1]);
             },
-            () => {
+            () =>
+            {
                 dynamic pso = Setup(type, [typeof(string[])]);
-                string[] p1 = ["foo","bar","buzz"];
+                string[] p1 = ["foo", "bar", "buzz"];
                 object? instance = pso.TestMember(p1);
                 Verify(type, instance, [p1]);
-            },
-        ]);
+            });
 
         static PSObject Setup(Type type, Type[] paramTypes)
         {

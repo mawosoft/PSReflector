@@ -34,6 +34,7 @@ namespace System.Diagnostics.CodeAnalysis
 namespace System.Runtime.CompilerServices
 {
     [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
+    [ExcludeFromCodeCoverage]
     [Embedded]
     internal sealed class CallerArgumentExpressionAttribute : Attribute
     {
