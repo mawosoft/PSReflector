@@ -10,7 +10,7 @@ namespace Mawosoft.PSReflector;
 internal sealed class TypeDescriptor
 {
     public Type Type { get; set; }
-    public List<(string PSName, MemberInfo MemberInfo, bool CanWrite)> MemberDescriptors { get; set; } = [];
+    public List<(string PSName, MemberInfo MemberInfo, bool CanWrite)> MemberDescriptors { get; } = [];
     public List<PSMemberInfo> InstanceMembers { get; set; } = null!;
     public List<PSMemberInfo> TypeMembers { get; set; } = null!;
     public int Version { get; set; }

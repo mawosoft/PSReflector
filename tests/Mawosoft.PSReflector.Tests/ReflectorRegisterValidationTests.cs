@@ -99,8 +99,8 @@ public class ReflectorRegisterValidationTests
         Assert.Empty(reflector.RegisteredTypes);
     }
 
-    public static readonly TheoryData<MemberDescriptor> InvalidMember_TheoryData = new(
-        [new MemberDescriptor(), new MemberDescriptor() { Name = "Method1", ParamCount = -1 }]);
+    public static readonly TheoryData<MemberDescriptor> InvalidMember_TheoryData =
+        [new MemberDescriptor(), new MemberDescriptor() { Name = "Method1", ParamCount = -1 }];
 
     [Theory]
     [MemberData(nameof(InvalidMember_TheoryData))]

@@ -10,8 +10,7 @@ namespace Mawosoft.PSReflector;
 
 public class PSBaseMethodTests
 {
-    public static readonly TheoryData<Type> Type_TheoryData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)]);
+    public static readonly TheoryData<Type> Type_TheoryData = [typeof(SimpleClass), typeof(SimpleStruct)];
 
     public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new(
         [typeof(SimpleClass), typeof(SimpleStruct)],
@@ -118,48 +117,52 @@ public class PSBaseMethodTests
     public void Invoke_Succeeds(Type type)
     {
         Assert.Multiple(
-        [
-            () => {
+            () =>
+            {
                 string memberName = "Method1";
                 dynamic pso = Setup(type, memberName);
                 string retval = pso.TestMember(111, "foo");
                 Verify(pso, memberName, retval, [111, "foo"]);
             },
-            () => {
+            () =>
+            {
                 string memberName = "StaticMethod1";
                 dynamic pso = Setup(type, memberName);
                 string retval = pso.TestMember(111, "foo");
                 Verify(pso, memberName, retval, [111, "foo"]);
             },
-            () => {
+            () =>
+            {
                 string memberName = "Method2";
                 dynamic pso = Setup(type, memberName);
-                int[] p1 = [1,2,3];
+                int[] p1 = [1, 2, 3];
                 string retval = pso.TestMember(p1);
                 Verify(pso, memberName, retval, [p1]);
             },
-            () => {
+            () =>
+            {
                 string memberName = "StaticMethod2";
                 dynamic pso = Setup(type, memberName);
-                int[] p1 = [1,2,3];
+                int[] p1 = [1, 2, 3];
                 string retval = pso.TestMember(p1);
                 Verify(pso, memberName, retval, [p1]);
             },
-            () => {
+            () =>
+            {
                 string memberName = "Method3";
                 dynamic pso = Setup(type, memberName);
-                string[] p1 = ["foo","bar","buzz"];
+                string[] p1 = ["foo", "bar", "buzz"];
                 string retval = pso.TestMember(p1);
                 Verify(pso, memberName, retval, [p1]);
             },
-            () => {
+            () =>
+            {
                 string memberName = "StaticMethod3";
                 dynamic pso = Setup(type, memberName);
-                string[] p1 = ["foo","bar","buzz"];
+                string[] p1 = ["foo", "bar", "buzz"];
                 string retval = pso.TestMember(p1);
                 Verify(pso, memberName, retval, [p1]);
-            },
-        ]);
+            });
 
         static PSObject Setup(Type type, string memberName)
         {
