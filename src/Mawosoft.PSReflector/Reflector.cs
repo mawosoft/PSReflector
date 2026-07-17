@@ -28,16 +28,7 @@ public sealed class Reflector
     private volatile int _typesVersion;
 
     /// <summary>Returns a collection of types that have been registered with this instance.</summary>
-    public ICollection<Type> RegisteredTypes => _registeredTypes.Keys;
-
-    /// <summary>Returns <c>true</c> if the specified type has been registered with this instance.</summary>
-    public bool IsTypeRegistered(Type type) => _registeredTypes.ContainsKey(type);
-
-    /// <summary>
-    /// Returns a collection of additional types that may cause registered members to automatically
-    /// expose non-public members on their return values.
-    /// </summary>
-    public ICollection<Type> AdditionalTypes => _additionalTypes.Keys;
+    internal ICollection<Type> RegisteredTypes => _registeredTypes.Keys;
 
     /// <summary>
     /// Registers non-public type members to be exposed like public members via <see cref="Expose(object?)"/>.
