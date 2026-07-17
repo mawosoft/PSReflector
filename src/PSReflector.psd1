@@ -9,7 +9,7 @@
     Author               = 'Matthias Wolf'
     CompanyName          = 'mawosoft'
     Copyright            = 'Copyright (c) 2026 Matthias Wolf, Mawosoft. All rights reserved.'
-    Description          = 'Powershell module to declaratively expose non-public type members.'
+    Description          = 'PowerShell module to declaratively expose non-public type members.'
     PowerShellVersion    = '5.1'
     NestedModules        = @(
         'Mawosoft.PSReflector.dll'
