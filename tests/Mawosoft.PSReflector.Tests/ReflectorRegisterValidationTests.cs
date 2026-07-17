@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Management.Automation;
 using System.Reflection;
 using Mawosoft.PSReflector.TestHelpers;
@@ -75,7 +76,7 @@ public class ReflectorRegisterValidationTests
         Assert.Empty(reflector.RegisteredTypes);
     }
 
-    public static readonly TheoryData<string, Type> UnsupportedType_TheoryData = new(
+    public static readonly TheoryData<string, Type> UnsupportedType_TheoryData =
     [
         ("interface", typeof(IFormattable)),
         ("abstract", typeof(Stream)),
@@ -85,7 +86,10 @@ public class ReflectorRegisterValidationTests
         ("array", typeof(SimpleClass[])),
         ("pointer", typeof(SimpleClass).MakePointerType()),
         ("by ref", typeof(SimpleClass).MakeByRefType()),
-    ]);
+        // Type.IsByRefLike doesn't exist in netfx and check for IsByRefLikeAttribute is too expensive.
+        // But since PowerShell doesn't support them anyway, we probably can just ignore it.
+        //("ref struct", typeof(ReadOnlySpan<char>)),
+    ];
 
     [Theory]
     [MemberData(nameof(UnsupportedType_TheoryData))]
@@ -98,6 +102,34 @@ public class ReflectorRegisterValidationTests
         var ex = Assert.Throws<ArgumentException>("types", () => reflector.Register(types, members));
         Assert.Contains(type.ToString() + " is not supported", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(reflector.RegisteredTypes);
+    }
+
+    public static readonly TheoryData<string, Type> SupportedType_TheoryData =
+    [
+        ("primitive", typeof(int)),
+        ("enum", typeof(BindingFlags)),
+        ("class", typeof(SimpleClass)),
+        ("sealed class", typeof(Version)),
+        ("static class", typeof(Tuple)),
+        ("struct", typeof(SimpleStruct)),
+        ("closed generics", typeof(Dictionary<int,string>)),
+        ("delegate", typeof(Action)),
+    ];
+
+    [Theory]
+    [MemberData(nameof(SupportedType_TheoryData))]
+    public void SupportedType_Succeeds(string hint, Type type)
+    {
+        _ = hint;
+        var members = type.GetMembers(BindingFlags.NonPublic
+                                      | BindingFlags.Instance
+                                      | BindingFlags.Static
+                                      | BindingFlags.FlattenHierarchy);
+        var mi = members.First(m => (m.MemberType & (MemberTypes.Field
+                                                     | MemberTypes.Property
+                                                     | MemberTypes.Method)) != 0);
+        Reflector reflector = new();
+        reflector.Register([type], [new MemberDescriptor(mi)]);
     }
 
     public static readonly TheoryData<MemberDescriptor> InvalidMember_TheoryData =
