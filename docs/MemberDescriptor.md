@@ -48,7 +48,7 @@ In PowerShell, you don't need to instantiate *MemberDescriptor* directly. You ca
 
 ## Remarks
 
-The term *Non-public* refers to members with an accessibility level of `private`, `protected`, `internal`, or a combination thereof.
+The term *non-public* refers to members with an accessibility level of `private`, `protected`, `internal`, or a combination thereof.
 The following member types are supported:
 
 - Instance and static fields.
