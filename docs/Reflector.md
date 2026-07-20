@@ -131,7 +131,7 @@ $sessionState = $reflector.Expose($ExecutionContext.SessionState)
 $sessionStateInternal = $sessionState.Internal
 # The same principle applies to the CurrentScope property.
 $scope = $sessionStateInternal.CurrentScope
-while ($scope.Parent) {
+while ($scope) {
     # Do something
     $scope = $scope.Parent
 }
