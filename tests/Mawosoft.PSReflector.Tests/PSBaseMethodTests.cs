@@ -2,6 +2,7 @@
 
 using System;
 using System.Management.Automation;
+using System.Management.Automation.Internal;
 using Mawosoft.PSReflector.TestHelpers;
 using Mawosoft.PSReflector.TestTypes;
 using Xunit;
@@ -18,10 +19,16 @@ public class PSBaseMethodTests
 
     public static readonly MatrixTheoryData<Type, string> Type_Member_MatrixData = new(
         [typeof(SimpleClass), typeof(SimpleStruct)],
-        ["StaticMethod1", "StaticMethod2", "StaticMethod3", "Method1", "Method2", "Method3"]);
+        [
+            "StaticMethod1", "StaticMethod2", "StaticMethod3", "StaticVoidMethod4",
+            "Method1", "Method2", "Method3","VoidMethod4"
+        ]);
 
     private static bool IsStaticMemberName(string memberName)
         => memberName.StartsWith("Static", StringComparison.Ordinal);
+
+    private static bool IsVoidMemberName(string memberName)
+        => memberName.Contains("Void", StringComparison.Ordinal);
 
     [Fact]
     public void Ctor_NullInfo_Throws()
@@ -113,80 +120,59 @@ public class PSBaseMethodTests
     }
 
     [Theory]
-    [MemberData(nameof(Type_TheoryData))]
-    public void Invoke_Succeeds(Type type)
+    [MemberData(nameof(Type_Member_MatrixData))]
+    public void Invoke_Succeeds(Type type, string memberName)
     {
-        Assert.Multiple(
-            () =>
-            {
-                string memberName = "Method1";
-                dynamic pso = Setup(type, memberName);
-                string retval = pso.TestMember(111, "foo");
-                Verify(pso, memberName, retval, [111, "foo"]);
-            },
-            () =>
-            {
-                string memberName = "StaticMethod1";
-                dynamic pso = Setup(type, memberName);
-                string retval = pso.TestMember(111, "foo");
-                Verify(pso, memberName, retval, [111, "foo"]);
-            },
-            () =>
-            {
-                string memberName = "Method2";
-                dynamic pso = Setup(type, memberName);
-                int[] p1 = [1, 2, 3];
-                string retval = pso.TestMember(p1);
-                Verify(pso, memberName, retval, [p1]);
-            },
-            () =>
-            {
-                string memberName = "StaticMethod2";
-                dynamic pso = Setup(type, memberName);
-                int[] p1 = [1, 2, 3];
-                string retval = pso.TestMember(p1);
-                Verify(pso, memberName, retval, [p1]);
-            },
-            () =>
-            {
-                string memberName = "Method3";
-                dynamic pso = Setup(type, memberName);
-                string[] p1 = ["foo", "bar", "buzz"];
-                string retval = pso.TestMember(p1);
-                Verify(pso, memberName, retval, [p1]);
-            },
-            () =>
-            {
-                string memberName = "StaticMethod3";
-                dynamic pso = Setup(type, memberName);
-                string[] p1 = ["foo", "bar", "buzz"];
-                string retval = pso.TestMember(p1);
-                Verify(pso, memberName, retval, [p1]);
-            });
+        var mih = new MemberInfoHelper(type);
+        var mi = mih.GetMethod(memberName);
+        var psm = new PSBaseMethod(mi, "TestMember");
+        object? instance = Activator.CreateInstance(type);
+        Assert.IsType(type, instance);
+        var pso = Reflector.PSObjectAsPSObject2Delegate(instance, true);
+        pso.Members.Add(psm);
+        var psm2 = pso.Methods["TestMember"];
+        Assert.Equal(psm, (IPSBaseMemberInfo)psm2, IPSBaseMemberInfoComparer.Instance);
+        Assert.Same(instance, pso.BaseObject);
 
-        static PSObject Setup(Type type, string memberName)
+        var (param, retval) = (memberName) switch
         {
-            var mih = new MemberInfoHelper(type);
-            var mi = mih.GetMethod(memberName);
-            var psm = new PSBaseMethod(mi, "TestMember");
-            object? instance = Activator.CreateInstance(type);
-            Assert.IsType(type, instance);
-            var pso = Reflector.PSObjectAsPSObject2Delegate(instance, true);
-            pso.Members.Add(psm);
-            var psm2 = pso.Methods["TestMember"];
-            Assert.Equal(psm, (IPSBaseMemberInfo)psm2, IPSBaseMemberInfoComparer.Instance);
-            Assert.Same(instance, pso.BaseObject);
-            return pso;
+            "StaticMethod1" or "Method1" => Invoker1(pso),
+            "StaticMethod2" or "Method2" => Invoker2(pso),
+            "StaticMethod3" or "Method3" => Invoker3(pso),
+            "StaticVoidMethod4" or "VoidMethod4" => Invoker4(pso),
+            _ => throw new InvalidOperationException(),
+        };
+
+        var info = Assert.IsType<ILastCallInfoProvider>(pso.BaseObject, exactMatch: false);
+        var call = IsStaticMemberName(memberName) ? info.LastCallInfoStatic : info.LastCallInfo;
+        object? expectedRetval = IsVoidMemberName(memberName) ? AutomationNull.Value : memberName;
+        Assert.NotNull(call);
+        Assert.Equal(memberName, call.MemberName);
+        Assert.Equal(param, call.Arguments);
+        Assert.Equal(expectedRetval, retval);
+
+        static (object[] param, object? retval) Invoker1(dynamic pso)
+        {
+            string retval = pso.TestMember(111, "foo");
+            return ([111, "foo"], retval);
         }
 
-        static void Verify(object pso, string memberName, string retval, object?[] param)
+        static (object[] param, object? retval) Invoker2(dynamic pso)
         {
-            var info = Assert.IsType<ILastCallInfoProvider>(((PSObject)pso).BaseObject, exactMatch: false);
-            var call = IsStaticMemberName(memberName) ? info.LastCallInfoStatic : info.LastCallInfo;
-            Assert.NotNull(call);
-            Assert.Equal(memberName, call.MemberName);
-            Assert.Equal(param, call.Arguments);
-            Assert.Equal(memberName, retval);
+            int[] p1 = [1, 2, 3];
+            string retval = pso.TestMember(p1);
+            return ([p1], retval);
+        }
+        static (object[] param, object? retval) Invoker3(dynamic pso)
+        {
+            string[] p1 = ["foo", "bar", "buzz"];
+            string retval = pso.TestMember(p1);
+            return ([p1], retval);
+        }
+        static (object[] param, object? retval) Invoker4(dynamic pso)
+        {
+            PSObject retval = pso.TestMember(42);
+            return ([42], retval);
         }
     }
 

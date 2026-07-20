@@ -72,6 +72,11 @@ public class SimpleClass : ILastCallInfoProvider, IMemberAccessor
         return LastCallInfoStatic2.MemberName;
     }
 
+    internal static void StaticVoidMethod4(int p1)
+    {
+        LastCallInfoStatic2 = new CallInfo([p1]);
+    }
+
     internal string Method1(int p1, string p2)
     {
         LastCallInfo = new CallInfo([p1, p2]);
@@ -88,6 +93,11 @@ public class SimpleClass : ILastCallInfoProvider, IMemberAccessor
     {
         LastCallInfo = new CallInfo([p1]);
         return LastCallInfo.MemberName;
+    }
+
+    internal void VoidMethod4(int p1)
+    {
+        LastCallInfo = new CallInfo([p1]);
     }
 
     // ILastCallInfoProvider

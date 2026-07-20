@@ -3,6 +3,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Management.Automation;
+using System.Management.Automation.Internal;
 using System.Reflection;
 
 namespace Mawosoft.PSReflector;
@@ -22,7 +23,9 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
     {
         var baseObject = _isStatic ? null : this.GetBaseObject();
         var retval = _methodInfo.Invoke(baseObject, arguments);
-        return _reflector is null ? retval : _reflector.Expose(retval);
+        return _methodInfo.ReturnType == typeof(void)
+            ? AutomationNull.Value
+            : _reflector is null ? retval : _reflector.Expose(retval);
     }
 
     public override string ToString() => PSBaseMemberFormatter.Format(_methodInfo);
