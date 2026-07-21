@@ -244,24 +244,29 @@ public sealed class Reflector
         }
     }
 
-    private static bool IsAllowedMemberInfo(Type type, MemberInfo memberInfo)
+    private static bool IsAllowedMemberInfo(Type type, MemberInfo memberInfo, bool privateOnly = false)
     {
         if ((memberInfo.MemberType & MemberDescriptor.AllowedMemberTypes) == 0) return false;
         if (!(memberInfo.ReflectedType?.IsAssignableFrom(type) ?? false)) return false;
         switch (memberInfo)
         {
             case FieldInfo mi:
+                if (privateOnly && !mi.IsPrivate) return false;
                 if (mi.FieldType.ContainsGenericParameters) return false;
                 break;
             case PropertyInfo mi:
-                if (!mi.CanRead) return false;
+                var getter = mi.GetMethod;
+                if (getter is null) return false;
+                if (privateOnly && !getter.IsPrivate) return false;
                 if (mi.GetIndexParameters().Length != 0) return false;
                 if (mi.PropertyType.ContainsGenericParameters) return false;
                 break;
             case MethodInfo mi:
+                if (privateOnly && !mi.IsPrivate) return false;
                 if (mi.ContainsGenericParameters) return false;
                 break;
             case ConstructorInfo mi:
+                if (privateOnly) return false;
                 if (mi.DeclaringType != type) return false;
                 if (mi.IsStatic) return false;
                 if (mi.ContainsGenericParameters) return false;
@@ -290,24 +295,34 @@ public sealed class Reflector
               | BindingFlags.FlattenHierarchy
             : BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static
               | BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase;
-        var candidates = type.GetMember(name, mt, bf);
         int exactMatches = 0;
-        foreach (var candidate in candidates)
+        bool privateOnly = false;
+        Type currentType = type;
+        while (results.Count == 0 && currentType is not null)
         {
-            if (!IsAllowedMemberInfo(type, candidate)) continue;
-            if (!paramCount.HasValue
-                || candidate is not MethodBase mb
-                || mb.GetParameters().Length == paramCount.Value)
+            var candidates = currentType.GetMember(name, mt, bf);
+            foreach (var candidate in candidates)
             {
-                if (caseSensitive || name == candidate.Name)
+                if (!IsAllowedMemberInfo(type, candidate, privateOnly)) continue;
+                if (!paramCount.HasValue
+                    || candidate is not MethodBase mb
+                    || mb.GetParameters().Length == paramCount.Value)
                 {
-                    results.Insert(exactMatches++, candidate);
-                }
-                else
-                {
-                    results.Add(candidate);
+                    if (caseSensitive || name == candidate.Name)
+                    {
+                        results.Insert(exactMatches++, candidate);
+                    }
+                    else
+                    {
+                        results.Add(candidate);
+                    }
                 }
             }
+            currentType = currentType.BaseType;
+            mt &= ~MemberTypes.Constructor;
+            bf = (bf & ~BindingFlags.FlattenHierarchy) | BindingFlags.DeclaredOnly;
+            // We have seen all inherited non-private members at the toplevel.
+            privateOnly = true;
         }
         if (exactMatches != 0)
         {
