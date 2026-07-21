@@ -35,7 +35,18 @@ jobs:
       with:
         show-progress: false
         fetch-depth: 0
+    - name: Query dotnet version
+      id: dotnet_version
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $PSNativeCommandUseErrorActionPreference = $false
+        dotnet --version
+        if ($LASTEXITCODE -ne 0) {
+          echo "setup_dotnet=true" >>$env:GITHUB_OUTPUT
+          $LASTEXITCODE = 0
+        }
     - name: Setup dotnet
+      if: ${{ steps.dotnet_version.outputs.setup_dotnet }}
       uses: actions/setup-dotnet@v5
       with:
         global-json-file: ./global.json
@@ -115,7 +126,7 @@ jobs:
         )
         dotnet dotnet-coverage collect $param
     - name: Upload to codecov
-      if: ${{ matrix.os == 'ubuntu-latest' || strategy.job-total == 1 }}
+      if: ${{ github.secret_source == 'Actions' && (matrix.os == 'ubuntu-latest' || strategy.job-total == 1) }}
       uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
