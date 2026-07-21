@@ -30,7 +30,6 @@ public struct SimpleStruct : ILastCallInfoProvider, IMemberAccessor
 
     private int _readonlyProperty;
     private int _property;
-    private int _mixedProperty;
 
     internal int ReadOnlyProperty
     {
@@ -41,12 +40,6 @@ public struct SimpleStruct : ILastCallInfoProvider, IMemberAccessor
     {
         get { LastCallInfo = new CallInfo([]); return _property; }
         set { LastCallInfo = new CallInfo([value]); _property = value; }
-    }
-
-    public int MixedProperty
-    {
-        get { LastCallInfo = new CallInfo([]); return _mixedProperty; }
-        internal set { LastCallInfo = new CallInfo([value]); _mixedProperty = value; }
     }
 
     public SimpleStruct() { }
@@ -141,7 +134,6 @@ public struct SimpleStruct : ILastCallInfoProvider, IMemberAccessor
                 nameof(Field) => (T)(object)Field,
                 nameof(ReadOnlyProperty) => (T)(object)_readonlyProperty,
                 nameof(Property) => (T)(object)_property,
-                nameof(MixedProperty) => (T)(object)_mixedProperty,
             };
         }
         throw new MemberAccessException();
@@ -171,9 +163,6 @@ public struct SimpleStruct : ILastCallInfoProvider, IMemberAccessor
                     return value;
                 case nameof(Property):
                     _property = (int)(object)value!;
-                    return value;
-                case nameof(MixedProperty):
-                    _mixedProperty = (int)(object)value!;
                     return value;
                 case nameof(ConstField):
                 case nameof(StaticReadOnlyField):

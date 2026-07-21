@@ -36,17 +36,62 @@ public class ReflectorRegisterTests
             string[] names = ["StaticField", "StaticProperty", "StaticMethod1", "Field", "Property", "Method1"];
             foreach (var name in names)
             {
-                mi = mih.GetMember("StaticField");
+                mi = mih.GetMember(name);
                 Add(type, mi.Name.ToUpperInvariant(), false, mi);
             }
+
             type = typeof(ClassWithExplicitInterface);
             mih = new MemberInfoHelper(type);
             mi = mih.GetMethod("Mawosoft.PSReflector.TestTypes.IExplicitInterface.ExplicitMethod");
             Add(type, mi.Name.ToUpperInvariant(), false, mi);
+
             type = typeof(ClassWithOverloads);
             mih = new MemberInfoHelper(type);
             mi = mih.GetMethod("IgnoreCase1");
             Add(type, mi.Name, true, mi);
+
+            type = typeof(DerivedClass);
+            mih = new MemberInfoHelper(type);
+            mih.BindingFlags |= BindingFlags.FlattenHierarchy;
+            names =
+            [
+                "StaticPrivateField20", "StaticPrivateProperty20", "StaticPrivateMethod20",
+                "PrivateField20", "PrivateProperty20", "PrivateMethod20",
+                "Method1",
+                "StaticNonPrivateField3", "StaticNonPrivateProperty3", "StaticNonPrivateMethod3",
+                "NonPrivateField3", "NonPrivateProperty3", "NonPrivateMethod3",
+            ];
+            foreach (var name in names)
+            {
+                mi = mih.GetMember(name);
+                Add(type, mi.Name, false, mi);
+            }
+            mih = new MemberInfoHelper(typeof(ConcreteBaseClass));
+            mih.BindingFlags |= BindingFlags.DeclaredOnly;
+            names =
+            [
+                "StaticPrivateSameNameField2", "StaticPrivateSameNameProperty2", "StaticPrivateSameNameMethod2",
+                "PrivateSameNameField2", "PrivateSameNameProperty2", "PrivateSameNameMethod2",
+                "StaticPrivateField10", "StaticPrivateProperty10", "StaticPrivateMethod10",
+                "PrivateField10", "PrivateProperty10", "PrivateMethod10",
+            ];
+            foreach (var name in names)
+            {
+                mi = mih.GetMember(name);
+                Add(type, mi.Name, false, mi);
+            }
+            mih = new MemberInfoHelper(typeof(AbstractBaseClass));
+            mih.BindingFlags |= BindingFlags.DeclaredOnly;
+            names =
+            [
+                "StaticPrivateField1", "StaticPrivateProperty1", "StaticPrivateMethod1",
+                "PrivateField1", "PrivateProperty1", "PrivateMethod1",
+            ];
+            foreach (var name in names)
+            {
+                mi = mih.GetMember(name);
+                Add(type, mi.Name, false, mi);
+            }
         }
     }
 
@@ -73,7 +118,20 @@ public class ReflectorRegisterTests
             var member = new MemberDescriptor { Name = ".ctor", ParamCount = 1 };
             Add(type, type, member, mi);
             mi = mih.GetMethod("Overload1", [typeof(int), typeof(int)]);
-            member = new MemberDescriptor { Name = "Overload1", ParamCount = 2 };
+            member = new MemberDescriptor { Name = mi.Name, ParamCount = 2 };
+            Add(type, Activator.CreateInstance(type), member, mi);
+            type = typeof(DerivedClass);
+            mih = new MemberInfoHelper(type);
+            mi = mih.GetConstructor([typeof(int), typeof(int)]);
+            member = new MemberDescriptor { Name = ".ctor", ParamCount = 2 };
+            Add(type, type, member, mi);
+            mih = new MemberInfoHelper(typeof(AbstractBaseClass));
+            mih.BindingFlags |= BindingFlags.DeclaredOnly;
+            mi = mih.GetMethod("StaticPrivateSameNameMethod2");
+            member = new MemberDescriptor { Name = mi.Name, ParamCount = 0 };
+            Add(type, Activator.CreateInstance(type), member, mi);
+            mi = mih.GetMethod("PrivateSameNameMethod2");
+            member = new MemberDescriptor { Name = mi.Name, ParamCount = 0 };
             Add(type, Activator.CreateInstance(type), member, mi);
         }
     }

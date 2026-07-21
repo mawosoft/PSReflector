@@ -208,16 +208,21 @@ public class ReflectorRegisterValidationTests
         Assert.Empty(reflector.RegisteredTypes);
     }
 
-    [Fact]
-    public void PropertyWithPublicGetter_ByName_Throws()
+    public static readonly TheoryData<string> PublicMember_TheoryData =
+        ["StaticPublicField4", "StaticPublicProperty4", "StaticMixedProperty5", "StaticPublicMethod4",
+         "PublicField4", "PublicProperty4", "MixedProperty5", "PublicMethod4"];
+
+    [Theory]
+    [MemberData(nameof(PublicMember_TheoryData))]
+    public void PublicMember_ByName_Throws(string memberName)
     {
         Reflector reflector = new();
-        Type[] types = [typeof(SimpleClass)];
-        MemberDescriptor member = new("MixedProperty");
+        Type[] types = [typeof(DerivedClass)];
+        MemberDescriptor member = new(memberName);
         MemberDescriptor[] members = [new("Method1"), member];
         var ex = Assert.Throws<MissingMemberException>(() => reflector.Register(types, members));
         Assert.Contains(member.ToString(), ex.Message, StringComparison.Ordinal);
-        Assert.Contains(nameof(SimpleClass), ex.Message, StringComparison.Ordinal);
+        Assert.Contains(nameof(DerivedClass), ex.Message, StringComparison.Ordinal);
         Assert.Empty(reflector.RegisteredTypes);
     }
 }
