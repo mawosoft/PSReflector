@@ -57,7 +57,7 @@
     <Company>$(Authors)</Company>
     <Product>PSReflector</Product>
     <Copyright>Copyright (c) 2026 Matthias Wolf, Mawosoft</Copyright>
-    <Version>1.0.1</Version>
+    <Version>1.0.2-dev</Version>
   </PropertyGroup>
 
   <PropertyGroup>
