@@ -11,21 +11,29 @@ namespace Mawosoft.PSReflector;
 public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
 {
     private readonly MethodInfo _methodInfo;
+    private object? _smaMethodInfo;
     private readonly bool _isStatic;
     private Reflector? _reflector;
 
     public override Collection<string> OverloadDefinitions => [ToString()];
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
     public override string TypeNameOfValue => typeof(PSBaseMethod).FullName!;
-    public override PSMemberInfo Copy() => new PSBaseMethod(_methodInfo, Name, _isStatic, _reflector);
+    public override PSMemberInfo Copy() => new PSBaseMethod(this);
 
     public override object? Invoke(params object[] arguments)
     {
         var baseObject = _isStatic ? null : this.GetBaseObject();
-        var retval = _methodInfo.Invoke(baseObject, arguments);
-        return _methodInfo.ReturnType == typeof(void)
-            ? AutomationNull.Value
-            : _reflector is null ? retval : _reflector.Expose(retval);
+        _smaMethodInfo ??= MethodBaseInvoker.GetMethodInformationArray(_methodInfo);
+        if (!_isStatic && _methodInfo.DeclaringType.IsValueType)
+        {
+        }
+        // This also takes care of void => AutomationNull.Value.
+        var retval = MethodBaseInvoker.InvokeMethod(baseObject, _methodInfo, _smaMethodInfo, arguments);
+        return _reflector is null ? retval : _reflector.Expose(retval);
+        //var retval = _methodInfo.Invoke(baseObject, arguments);
+        //return _methodInfo.ReturnType == typeof(void)
+        //    ? AutomationNull.Value
+        //    : _reflector is null ? retval : _reflector.Expose(retval);
     }
 
     public override string ToString() => PSBaseMemberFormatter.Format(_methodInfo);
@@ -38,12 +46,13 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
         _isStatic = info.IsStatic;
     }
 
-    private PSBaseMethod(MethodInfo info, string name, bool isStatic, Reflector? reflector)
+    private PSBaseMethod(PSBaseMethod other)
     {
-        SetMemberName(name);
-        _methodInfo = info;
-        _isStatic = isStatic;
-        _reflector = reflector;
+        SetMemberName(other.Name);
+        _methodInfo = other._methodInfo;
+        _smaMethodInfo = other._smaMethodInfo;
+        _isStatic = other._isStatic;
+        _reflector = other._reflector;
     }
 
     // IPSBaseMemberInfo

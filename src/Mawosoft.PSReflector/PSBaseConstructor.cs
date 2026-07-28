@@ -15,10 +15,11 @@ public sealed class PSBaseConstructor : PSMethodInfo, IPSBaseMemberInfo
     public override Collection<string> OverloadDefinitions => [ToString()];
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
     public override string TypeNameOfValue => typeof(PSBaseConstructor).FullName!;
-    public override PSMemberInfo Copy() => new PSBaseConstructor(_ctorInfo, Name, _reflector);
+    public override PSMemberInfo Copy() => new PSBaseConstructor(this);
 
     public override object? Invoke(params object[] arguments)
     {
+        // TODO Use MethodBaseInvoker
         var retval = _ctorInfo.Invoke(arguments);
         return _reflector is null ? retval : _reflector.Expose(retval);
     }
@@ -32,11 +33,11 @@ public sealed class PSBaseConstructor : PSMethodInfo, IPSBaseMemberInfo
         _ctorInfo = info;
     }
 
-    private PSBaseConstructor(ConstructorInfo info, string name, Reflector? reflector)
+    private PSBaseConstructor(PSBaseConstructor other)
     {
-        SetMemberName(name);
-        _ctorInfo = info;
-        _reflector = reflector;
+        SetMemberName(other.Name);
+        _ctorInfo = other._ctorInfo;
+        _reflector = other._reflector;
     }
 
     // IPSBaseMemberInfo
