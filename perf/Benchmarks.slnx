@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="./ReflectionBenchmarks/ReflectionBenchmarks.csproj" DefaultStartup="true" />
+  <Project Path="../src/Mawosoft.PSReflector/Mawosoft.PSReflector.csproj" />
+</Solution>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <NetFxTfm Condition="'$(NetFxTfm)' == ''">net48</NetFxTfm>
+    <NetFxTfm Condition="! $([MSBuild]::IsOSPlatform('windows'))"></NetFxTfm>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputType>exe</OutputType>
+    <TargetFrameworks>net10.0;$(NetFxTfm)</TargetFrameworks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableGitCommitCount>false</EnableGitCommitCount>
+  </PropertyGroup>
+
+  <ItemGroup>
+     <ProjectReference Include="../../src/Mawosoft.PSReflector/Mawosoft.PSReflector.csproj" /> 
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'" Include="Microsoft.PowerShell.5.1.ReferenceAssemblies" />
+    <PackageReference Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework'" Include="System.Management.Automation" />
+    <PackageReference Include="BenchmarkDotNet" VersionOverride="0.15.8" />
+  </ItemGroup>
+
+</Project>
