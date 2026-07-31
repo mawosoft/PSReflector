@@ -17,7 +17,7 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
     public override Collection<string> OverloadDefinitions => [ToString()];
     public override PSMemberTypes MemberType => PSMemberTypes.CodeMethod;
     public override string TypeNameOfValue => typeof(PSBaseMethod).FullName!;
-    public override PSMemberInfo Copy() => new PSBaseMethod(_methodInfo, Name, _isStatic, _reflector);
+    public override PSMemberInfo Copy() => new PSBaseMethod(this);
 
     public override object? Invoke(params object[] arguments)
     {
@@ -38,12 +38,12 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
         _isStatic = info.IsStatic;
     }
 
-    private PSBaseMethod(MethodInfo info, string name, bool isStatic, Reflector? reflector)
+    private PSBaseMethod(PSBaseMethod other)
     {
-        SetMemberName(name);
-        _methodInfo = info;
-        _isStatic = isStatic;
-        _reflector = reflector;
+        SetMemberName(other.Name);
+        _methodInfo = other._methodInfo;
+        _isStatic = other._isStatic;
+        _reflector = other._reflector;
     }
 
     // IPSBaseMemberInfo
