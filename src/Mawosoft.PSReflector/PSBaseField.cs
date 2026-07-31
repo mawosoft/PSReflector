@@ -18,8 +18,7 @@ public sealed class PSBaseField : PSPropertyInfo, IPSBaseMemberInfo
     public override bool IsGettable => true;
     public override PSMemberTypes MemberType => PSMemberTypes.CodeProperty;
     public override string TypeNameOfValue => _fieldInfo.FieldType.ToString();
-    public override PSMemberInfo Copy()
-        => new PSBaseField(_fieldInfo, Name, canWrite: _canWrite, isStatic: _isStatic, _reflector);
+    public override PSMemberInfo Copy() => new PSBaseField(this);
 
     public override object? Value
     {
@@ -58,13 +57,13 @@ public sealed class PSBaseField : PSPropertyInfo, IPSBaseMemberInfo
         _isStatic = attr.HasFlag(FieldAttributes.Static);
     }
 
-    private PSBaseField(FieldInfo info, string name, bool canWrite, bool isStatic, Reflector? reflector)
+    private PSBaseField(PSBaseField other)
     {
-        SetMemberName(name);
-        _fieldInfo = info;
-        _canWrite = canWrite;
-        _isStatic = isStatic;
-        _reflector = reflector;
+        SetMemberName(other.Name);
+        _fieldInfo = other._fieldInfo;
+        _canWrite = other._canWrite;
+        _isStatic = other._isStatic;
+        _reflector = other._reflector;
     }
 
     // IPSBaseMemberInfo
