@@ -12,22 +12,22 @@ public readonly struct ObjectInfo
         </Objs>
         """;
 
-    public int Id => field == 0 && Value is null ? (int)SpecialObjectId.Missing : field;
+    public ObjectId Id => field == 0 && Value is null ? ObjectId.Missing : field;
 
     public string? Value { get; }
 
-    internal ObjectInfo(int id, object? obj)
+    internal ObjectInfo(ObjectId id, object? obj)
     {
         Id = id;
-        Value = id == (int)SpecialObjectId.Missing
+        Value = id == ObjectId.Missing
             ? null
-            : id < 0 ? string.Format(null, NilXml, (SpecialObjectId)id) : PSSerializer.Serialize(obj);
+            : id < 0 ? string.Format(null, NilXml, id) : PSSerializer.Serialize(obj);
     }
 
     public override string ToString()
     {
         return Id < 0 || Value is null
-        ? ((SpecialObjectId)Id).ToString()
-        : $"{Id}: {PSSerializer.Deserialize(Value)}\n{Value}";
+        ? Id.ToString()
+        : $"{Id}: {PSSerializer.Deserialize(Value)}";
     }
 }

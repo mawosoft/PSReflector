@@ -10,17 +10,18 @@ namespace InvocationTestFixture.Internal;
 
 internal readonly struct ExecutionContextProxy
 {
+    private static readonly Type s_tiExecutionContext =
+        new StrictType(typeof(PSObject).Assembly, SMA.Types.ExecutionContext).Type;
     private static readonly PropertyInfo s_piExecutionContext =
         new StrictType(typeof(Runspace)).GetProperty(SMA.Members.ExecutionContext);
     private static readonly PropertyInfo s_piDollarErrorVariable =
-        new StrictType(typeof(PSObject).Assembly, SMA.Types.ExecutionContext)
-        .GetProperty(SMA.Members.DollarErrorVariable);
+        new StrictType(s_tiExecutionContext).GetProperty(SMA.Members.DollarErrorVariable);
 
     public object? Target { get; }
 
     public ExecutionContextProxy(object? executionContext)
     {
-        Target = executionContext is null || executionContext.GetType().FullName == SMA.Types.ExecutionContext
+        Target = executionContext is null || executionContext.GetType() == s_tiExecutionContext
             ? executionContext
             : throw new ArgumentException(null, nameof(executionContext));
     }

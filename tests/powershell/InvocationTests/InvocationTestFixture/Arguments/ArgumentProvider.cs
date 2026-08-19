@@ -6,6 +6,10 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace InvocationTestFixture.Arguments;
 
+// TODO Create arguments based on MethodInfo, maybe with variants.
+// - Variants can be controlled via args, e.g. caller passes a sentinel like Type.Missing for default, otherwise arg is passed through as is?
+// - For ParamArray, create a sensible number (5?). Caller can skip via trailing $null on LHS of assignment.
+// - Consider returning PSObject with note properties for replacement/mutation tests.
 public static class ArgumentProvider
 {
     /// <summary>
@@ -21,8 +25,6 @@ public static class ArgumentProvider
     /// </param>
     public static object?[] Create(params object?[] typesAndCounts)
     {
-        // TODO optional add note property (and return PSObject)
-        //      although we would only need it for mutation/replacement tests.
         typesAndCounts ??= [];
         List<object?> result = [];
         Type? type = null;

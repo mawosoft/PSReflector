@@ -10,7 +10,7 @@ using InvocationTestFixture.Internal;
 
 namespace InvocationTestFixture;
 
-public sealed class InvocationTransformer : AstVisitor2
+public sealed partial class InvocationTransformer : AstVisitor2
 {
     private const string ReturnVariableText = "$_retval";
     private const string ArgsVariableText = "$_arguments";
@@ -24,7 +24,6 @@ public sealed class InvocationTransformer : AstVisitor2
     private readonly StringBuilder _resultBuilder = new(1024);
     private readonly string _astText;
     private int _astOffset;
-    private int _indentSize;
 
     public static string Transform(Ast ast, string instanceName = "methodProvider")
     {
@@ -60,51 +59,6 @@ public sealed class InvocationTransformer : AstVisitor2
         return _resultBuilder.ToString();
     }
 
-    private void AppendBeforeAst(Ast ast)
-    {
-        _resultBuilder.Append(_astText, _astOffset - _ast.Extent.StartOffset, ast.Extent.StartOffset - _astOffset);
-        _astOffset = ast.Extent.EndOffset;
-        _indentSize = ast.Extent.StartColumnNumber - 1;
-    }
-
-    private void AppendIndent()
-    {
-        if (_indentSize > 0) _resultBuilder.Append(' ', _indentSize);
-    }
-
-    private void AppendBeginInvocation(string instanceText, string methodName, string argsText)
-    {
-        _resultBuilder.Append(instanceText).Append('.').Append(nameof(MethodProviderBase.BeginInvocation))
-            .Append("('").Append(methodName).Append("', ").Append(argsText).AppendLine(")");
-    }
-
-    private void AppendEndInvocation(string instanceText, string argsText)
-    {
-        AppendIndent();
-        _resultBuilder.Append(instanceText).Append('.').Append(nameof(MethodProviderBase.EndInvocation))
-            .Append($"({ReturnVariableText}, ").Append(argsText).Append(')');
-    }
-
-    private void AppendSimpleInvoke(InvokeMemberExpressionAst methodCallAst)
-    {
-        AppendIndent();
-        _resultBuilder.Append($"{ReturnVariableText} = ").AppendLine(methodCallAst.Extent.Text);
-    }
-
-    private void AppendReflectionInvokePartial(string instanceText, string methodName)
-    {
-        AppendIndent();
-        _resultBuilder.Append($"{ReturnVariableText} = ").Append(instanceText)
-            .Append(".GetType().GetMethod('").Append(methodName).Append("').Invoke(")
-            .Append(instanceText).Append(", ");
-    }
-
-    private void AppendArrayCast(Type type)
-    {
-        // TODO FullName or Name
-        _resultBuilder.Append('[').Append(type.Name).Append("[]]");
-    }
-
     private static string GetArrayPrefix(int length) => length == 1 ? "@(, " : "@(";
 
     public override AstVisitAction VisitInvokeMemberExpression([NotNull] InvokeMemberExpressionAst methodCallAst)
@@ -128,13 +82,14 @@ public sealed class InvocationTransformer : AstVisitor2
             int start = args[0].Extent.StartOffset - _ast.Extent.StartOffset;
             argsText = GetArrayPrefix(args.Count) + _astText.Substring(start, argsEndOffset - start) + ")";
         }
-        AppendBeforeAst(methodCallAst);
-        AppendBeginInvocation(instanceText, methodName, argsText);
+        _resultBuilder.Append(_astText, _astOffset - _ast.Extent.StartOffset, methodCallAst.Extent.StartOffset - _astOffset);
+        _astOffset = methodCallAst.Extent.EndOffset;
+        var sb = new ScriptBuilder(_resultBuilder).WithIndent(methodCallAst.Extent.StartColumnNumber - 1);
+        sb.BeginInvocation(instanceText, methodName, argsText);
 
         if (!_useReflectionInvoke)
         {
-            AppendSimpleInvoke(methodCallAst);
-            AppendEndInvocation(instanceText, argsText);
+            sb.SimpleInvoke(methodCallAst).EndInvocation(instanceText, argsText);
             return AstVisitAction.SkipChildren;
         }
 
@@ -142,27 +97,25 @@ public sealed class InvocationTransformer : AstVisitor2
         var paramInfos = methodInfo.GetParameters();
         if (!paramInfos.Any(pi => pi.ParameterType.IsByRef || pi.ParameterType.IsArray))
         {
-            AppendReflectionInvokePartial(instanceText, methodName);
-            _resultBuilder.Append(argsText).AppendLine(")");
-            AppendEndInvocation(instanceText, argsText);
+            sb.ReflectionInvokePartial(instanceText, methodName).Append(argsText).AppendLine(")")
+              .EndInvocation(instanceText, argsText);
             return AstVisitAction.SkipChildren;
         }
 
         // Handle each argument separately
-        AppendIndent();
-        _resultBuilder.Append(ArgsVariableText).Append(" = ").Append(GetArrayPrefix(paramInfos.Length));
+        sb.Indent().Append(ArgsVariableText).Append(" = ").Append(GetArrayPrefix(paramInfos.Length));
         bool comma = false;
         bool hasByRef = false;
         bool hasParamArray = false;
         int minCount = paramInfos.Length;
-        if (paramInfos[minCount - 1].IsDefined(typeof(ParamArrayAttribute), inherit: false))
+        if (paramInfos.HasParamArray)
         {
             hasParamArray = true;
             minCount--;
         }
         for (int i = 0; i < minCount; i++)
         {
-            if (comma) _resultBuilder.Append(", ");
+            if (comma) sb.Append(", ");
             comma = true;
             ExpressionAst? arg = i < args.Count ? args[i] : null;
             Type elementType = paramInfos[i].ParameterType;
@@ -175,18 +128,18 @@ public sealed class InvocationTransformer : AstVisitor2
             if (elementType.IsArray)
             {
                 elementType = elementType.GetElementType();
-                AppendArrayCast(elementType);
+                sb.ArrayCast(elementType);
             }
-            _resultBuilder.Append(arg is null ? NullVariableText : arg.Extent.Text);
+            sb.Append(arg is null ? NullVariableText : arg.Extent.Text);
         }
         if (hasParamArray)
         {
-            if (comma) _resultBuilder.Append(", ");
+            if (comma) sb.Append(", ");
             Type elementType = paramInfos[minCount].ParameterType.GetElementType();
-            AppendArrayCast(elementType);
+            sb.ArrayCast(elementType);
             if (args.Count <= minCount)
             {
-                _resultBuilder.Append("@()");
+                sb.Append("@()");
             }
             else if (args.Count == minCount + 1)
             {
@@ -195,23 +148,22 @@ public sealed class InvocationTransformer : AstVisitor2
                 if (string.Equals(argText, NullVariableText, StringComparison.OrdinalIgnoreCase)
                     || arg.Find(a => a is ArrayExpressionAst or ArrayLiteralAst, true) is not null)
                 {
-                    _resultBuilder.Append(argText);
+                    sb.Append(argText);
                 }
                 else
                 {
-                    _resultBuilder.Append("@(, ").Append(argText).Append(')');
+                    sb.Append("@(, ").Append(argText).Append(')');
                 }
             }
             else
             {
                 int start = args[minCount].Extent.StartOffset - _ast.Extent.StartOffset;
-                _resultBuilder.Append("@(").Append(_astText, start, argsEndOffset - start).Append(')');
+                sb.Append("@(").Append(_astText, start, argsEndOffset - start).Append(')');
             }
         }
-        _resultBuilder.AppendLine(")");
-        AppendReflectionInvokePartial(instanceText, methodName);
-        _resultBuilder.Append(ArgsVariableText).AppendLine(")");
-        AppendEndInvocation(instanceText, hasByRef ? ArgsVariableText : argsText);
+        sb.AppendLine(")")
+          .ReflectionInvokePartial(instanceText, methodName).Append(ArgsVariableText).AppendLine(")")
+          .EndInvocation(instanceText, hasByRef ? ArgsVariableText : argsText);
         return AstVisitAction.SkipChildren;
     }
 }

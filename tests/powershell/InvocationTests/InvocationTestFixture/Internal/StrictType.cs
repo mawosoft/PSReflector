@@ -19,7 +19,7 @@ internal ref struct StrictType
     public StrictType(Assembly assembly, string typeName)
     {
         ArgumentNullException.ThrowIfNull(assembly);
-        ArgumentNullException.ThrowIfNull(typeName);
+        ArgumentException.ThrowIfNullOrEmpty(typeName);
         Type = assembly.GetType(typeName) ?? throw new TypeLoadException($"Type not found: {typeName}");
     }
 

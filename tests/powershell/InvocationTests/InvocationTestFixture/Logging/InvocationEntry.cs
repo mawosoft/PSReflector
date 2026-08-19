@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Management.Automation;
+using System.Management.Automation.Internal;
 using System.Management.Automation.Runspaces;
 using System.Reflection;
+using System.Text;
 using InvocationTestFixture.Internal;
 
 namespace InvocationTestFixture.Logging;
@@ -17,40 +19,66 @@ public sealed class InvocationEntry
 {
     private readonly InvocationLog _log;
     private readonly ObjectTracker _tracker = new();
-    private readonly ParameterInfo[] _parameterInfos;
+    private readonly MethodInfo _method;
+    private readonly ParameterInfo[] _parameters;
     private readonly bool _hasParamArray;
-    private readonly List<ArgumentInfo> _argumentInfos = [];
+    private readonly List<ArgumentInfo> _arguments = [];
+    private readonly ArgumentInfo _returnValue = new();
     private InvocationStep _invocationStep = InvocationStep.Before;
 
-    public MethodInfo MethodInfo { get; }
-    public IReadOnlyList<ArgumentInfo> ArgumentInfos => _argumentInfos;
-    public ArgumentInfo ReturnValue { get; } = new();
+    public IReadOnlyList<ArgumentInfo> Arguments => _arguments;
+    public ArgumentInfo ReturnValue => _returnValue;
+    public string Signature => _method.ToString();
     public int ScriptLine { get; private set; }
     public string? ScriptText { get; private set; }
     public IReadOnlyList<object> ScriptErrors { get; private set; } = [];
 
+    /// <summary>
+    /// Returns a report of all errors encountered during this invocation, or <c>null</c> if there weren't any.
+    /// </summary>
+    public string? ReportErrors()
+    {
+        StringBuilder? sb = null;
+        if (_invocationStep != InvocationStep.After)
+        {
+            sb = new StringBuilder();
+            sb.Append("Incomplete. Last recorded step: ").Append(_invocationStep).AppendLine(".");
+        }
+        if (ScriptErrors.Count != 0)
+        {
+            sb ??= new StringBuilder();
+            sb.AppendLine("Script errors:");
+            foreach (var error in ScriptErrors) sb.Append("  ").Append(error);
+        }
+        // TODO return value
+        // TODO arguments
+        return sb?.ToString();
+    }
+
     internal InvocationEntry(InvocationLog log, string methodName, object?[] args)
     {
         ArgumentNullException.ThrowIfNull(log);
-        ArgumentNullException.ThrowIfNull(methodName);
+        ArgumentException.ThrowIfNullOrEmpty(methodName);
         ArgumentNullException.ThrowIfNull(args);
         _log = log;
-        MethodInfo = new StrictType(_log.Instance.GetType()).GetMethod(methodName);
-        _parameterInfos = MethodInfo.GetParameters();
-        if (_parameterInfos.Length != 0)
+        _method = new StrictType(_log.Instance.GetType()).GetMethod(methodName);
+        if (_method.ReturnType == typeof(void))
         {
-            if (MethodInfo.IsStatic && _parameterInfos[0].ParameterType == typeof(PSObject))
+            _returnValue.Exit = new ObjectInfo(ObjectId.AutoNull, AutomationNull.Value);
+        }
+        _parameters = _method.GetParameters();
+        if (_parameters.Length != 0)
+        {
+            if (_method.IsStatic && _parameters[0].ParameterType == typeof(PSObject))
             {
                 // PSCodeMethod with first param PSObject instance
-                Array.Copy(_parameterInfos, 1, _parameterInfos, 0, _parameterInfos.Length - 1);
-                Array.Resize(ref _parameterInfos, _parameterInfos.Length - 1);
+                var tmp = _parameters;
+                _parameters = new ParameterInfo[tmp.Length - 1];
+                Array.Copy(tmp, 1, _parameters, 0, _parameters.Length);
             }
-            if (_parameterInfos.Length != 0 && _parameterInfos[_parameterInfos.Length - 1].IsDefined(typeof(ParamArrayAttribute), inherit: false))
-            {
-                _hasParamArray = true;
-            }
+            _hasParamArray = _parameters.HasParamArray;
         }
-        EnsureArgumentInfoCount(_parameterInfos.Length);
+        EnsureArgumentInfoCount(_parameters.Length);
         AddArguments(InvocationStep.Before, args, ignoreValueTypeIds: false);
         ExecutionContextProxy.FromDefaultRunspace().DollarErrorVariable?.Clear();
     }
@@ -59,7 +87,7 @@ public sealed class InvocationEntry
     {
         if (_invocationStep >= InvocationStep.After) ThrowInvalidInvocationSequence();
         _invocationStep = InvocationStep.After;
-        ReturnValue.After = new ObjectInfo(GetObjectId(retval, ignoreValueTypeIds: true), retval);
+        _returnValue.After = new ObjectInfo(GetObjectId(retval, ignoreValueTypeIds: true), retval);
         AddArguments(InvocationStep.After, args, ignoreValueTypeIds: false);
         ArrayList? dollarError = ExecutionContextProxy.FromDefaultRunspace().DollarErrorVariable;
         if (dollarError?.Count > 0) ScriptErrors = dollarError.ToArray();
@@ -67,9 +95,8 @@ public sealed class InvocationEntry
 
     internal void LogEnter(string methodName, object?[] args)
     {
-        ArgumentNullException.ThrowIfNull(methodName);
         ArgumentNullException.ThrowIfNull(args);
-        if (_invocationStep != InvocationStep.Before || MethodInfo.Name != methodName) ThrowInvalidInvocationSequence();
+        if (_invocationStep != InvocationStep.Before || _method.Name != methodName) ThrowInvalidInvocationSequence();
         _invocationStep = InvocationStep.Enter;
         AddArguments(InvocationStep.Enter, args, ignoreValueTypeIds: true);
         CallStackFrame? frame = Runspace.DefaultRunspace?.Debugger?.GetCallStack().FirstOrDefault();
@@ -84,7 +111,7 @@ public sealed class InvocationEntry
     {
         if (_invocationStep != InvocationStep.Enter) ThrowInvalidInvocationSequence();
         _invocationStep = InvocationStep.Exit;
-        ReturnValue.Exit = new ObjectInfo(GetObjectId(retval, ignoreValueTypeIds: true), retval);
+        _returnValue.Exit = new ObjectInfo(GetObjectId(retval, ignoreValueTypeIds: true), retval);
         AddArguments(InvocationStep.Exit, args, ignoreValueTypeIds: true);
     }
 
@@ -92,12 +119,12 @@ public sealed class InvocationEntry
     {
         if (args is null) return;
         int maxCount = args.Length;
-        if (_hasParamArray && args.Length >= _parameterInfos.Length) maxCount--;
+        if (_hasParamArray && args.Length >= _parameters.Length) maxCount--;
         AddArgumentRange(step, args, 0, maxCount, 0, ignoreValueTypeIds);
         if (_hasParamArray)
         {
-            int continuationIndex = _parameterInfos.Length - 1;
-            if (args.Length == _parameterInfos.Length && PSObject.Unwrap(args[continuationIndex]) is Array paramArray)
+            int continuationIndex = _parameters.Length - 1;
+            if (args.Length == _parameters.Length && PSObject.Unwrap(args[continuationIndex]) is Array paramArray)
             {
                 AddArgumentRange(step, paramArray, 0, -1, continuationIndex, ignoreValueTypeIds);
             }
@@ -138,7 +165,7 @@ public sealed class InvocationEntry
             for (int i = sourceIndex, k = destinationIndex; i < sourceEnd; i++, k++)
             {
                 var arg = PSObject.Unwrap(objects[i]);
-                _argumentInfos[k][step] = new ObjectInfo(GetObjectId(arg, ignoreValueTypeIds), arg);
+                _arguments[k][step] = new ObjectInfo(GetObjectId(arg, ignoreValueTypeIds), arg);
             }
         }
         else
@@ -146,20 +173,20 @@ public sealed class InvocationEntry
             for (int i = sourceIndex, k = destinationIndex; i < sourceEnd; i++, k++)
             {
                 var arg = PSObject.Unwrap(args.GetValue(i));
-                _argumentInfos[k][step] = new ObjectInfo(GetObjectId(arg, ignoreValueTypeIds), arg);
+                _arguments[k][step] = new ObjectInfo(GetObjectId(arg, ignoreValueTypeIds), arg);
             }
         }
     }
 
     private void EnsureArgumentInfoCount(int count)
     {
-        while (_argumentInfos.Count < count) _argumentInfos.Add(new());
+        while (_arguments.Count < count) _arguments.Add(new());
     }
 
-    private int GetObjectId(object? obj, bool ignoreValueTypeIds)
+    private ObjectId GetObjectId(object? obj, bool ignoreValueTypeIds)
     {
-        if (obj is null) return (int)SpecialObjectId.NullNull;
-        if (ignoreValueTypeIds && obj.GetType().IsValueType) return (int)SpecialObjectId.None;
+        if (obj is null) return ObjectId.NullNull;
+        if (ignoreValueTypeIds && obj.GetType().IsValueType) return ObjectId.None;
         return _tracker.GetOrAddId(obj);
     }
 
@@ -169,36 +196,3 @@ public sealed class InvocationEntry
         throw new InvalidOperationException("Invalid invocation sequence.");
     }
 }
-/*
-1) Simple call
-                               arg nesting level
-call(a1, a2, a3)                  0 
-invoke(target, @(a1, a2, a3))     1
--or-
-$arguments = @(a1, a2, a3)
-invoke(target, $arguments)        1
-
-2) ByRef call
-                               arg nesting level
-call(a1, [ref]a2, a3)             0 
-invoke(target, @(a1, a2, a3))     1
--or-
-$arguments = @(a1, a2, a3)
-invoke(target, $arguments)        1
-# copy back?
-
-Should we always treat args as an invoke-like array?
-- pro:
-  - Internal LogCall receives args as [a1, a2, a3] anyway
-  - ByRef may be easier to track for invoke?
-
-3) Params array sample sig: a1, params[] a2
-call                nest     invoke
-(a1)                0  1     (t, [a1, (cast)[]]) // (t, [a1]) causes paramcount mismatch
-(a1, null)                   (t, [a1, null])
-(a1, [])            1  2     (t, [a1, (cast)[]])
-(a1, pa1)                    (t, [a1, (cast)[pa1]])
-(a1, [pa1])                    ditto
-(a1, pa1, pa2)               (t, [a1, (cast)[pa1, pa2]])
-(a1, [pa1, pa2])               ditto
-*/
