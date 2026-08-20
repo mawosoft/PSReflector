@@ -37,6 +37,13 @@ $null = $null
 
 <# TODO analysis
     - Logs against baseline log ([InvocationMode]::Direct)
-    - Exit args/retval vs After args/retval
-    - Before/After identities
+    - Exit args/retval vs After args/retval and Before/After identities
+    - Identity changed if Ids differ, except when
+      - one is > 0 and the other is None/Missing
+    - ArgumentInfo[i]
+      - Normal arguments
+        - All ids should be unchanged
+        - All values should be unchanged
+      - ByRef arguments
+        - After Values should match Exit Values
 #>

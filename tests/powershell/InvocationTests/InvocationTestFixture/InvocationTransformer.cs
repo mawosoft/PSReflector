@@ -84,7 +84,7 @@ public sealed partial class InvocationTransformer : AstVisitor2
         }
         _resultBuilder.Append(_astText, _astOffset - _ast.Extent.StartOffset, methodCallAst.Extent.StartOffset - _astOffset);
         _astOffset = methodCallAst.Extent.EndOffset;
-        var sb = new ScriptBuilder(_resultBuilder).WithIndent(methodCallAst.Extent.StartColumnNumber - 1);
+        var sb = new ScriptBuilder(_resultBuilder).WithIndentSize(methodCallAst.Extent.StartColumnNumber - 1);
         sb.BeginInvocation(instanceText, methodName, argsText);
 
         if (!_useReflectionInvoke)

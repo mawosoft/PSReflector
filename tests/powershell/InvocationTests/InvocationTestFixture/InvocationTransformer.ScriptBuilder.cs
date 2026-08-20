@@ -11,18 +11,23 @@ public sealed partial class InvocationTransformer
     private readonly struct ScriptBuilder
     {
         private readonly StringBuilder _sb;
-        private readonly int _indent;
+        private readonly int _indentSize;
 
         public ScriptBuilder(StringBuilder sb)
         {
             _sb = sb;
-            _indent = 0;
+            _indentSize = 0;
         }
 
-        public ScriptBuilder(StringBuilder sb, int indent)
+        private ScriptBuilder(StringBuilder sb, int indentSize)
         {
             _sb = sb;
-            _indent = indent;
+            _indentSize = indentSize;
+        }
+
+        public ScriptBuilder WithIndentSize(int indentSize)
+        {
+            return new(_sb, indentSize);
         }
 
         public ScriptBuilder Append(char value)
@@ -55,14 +60,9 @@ public sealed partial class InvocationTransformer
             return this;
         }
 
-        public ScriptBuilder WithIndent(int indent)
-        {
-            return new(_sb, indent);
-        }
-
         public ScriptBuilder Indent()
         {
-            if (_indent > 0) _sb.Append(' ', _indent);
+            if (_indentSize > 0) _sb.Append(' ', _indentSize);
             return this;
         }
 

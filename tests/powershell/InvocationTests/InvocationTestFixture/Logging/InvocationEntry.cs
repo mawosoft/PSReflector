@@ -31,7 +31,7 @@ public sealed class InvocationEntry
     public string Signature => _method.ToString();
     public int ScriptLine { get; private set; }
     public string? ScriptText { get; private set; }
-    public IReadOnlyList<object> ScriptErrors { get; private set; } = [];
+    public IReadOnlyList<string> ScriptErrors { get; private set; } = [];
 
     /// <summary>
     /// Returns a report of all errors encountered during this invocation, or <c>null</c> if there weren't any.
@@ -90,7 +90,10 @@ public sealed class InvocationEntry
         _returnValue.After = new ObjectInfo(GetObjectId(retval, ignoreValueTypeIds: true), retval);
         AddArguments(InvocationStep.After, args, ignoreValueTypeIds: false);
         ArrayList? dollarError = ExecutionContextProxy.FromDefaultRunspace().DollarErrorVariable;
-        if (dollarError?.Count > 0) ScriptErrors = dollarError.ToArray();
+        if (dollarError?.Count > 0)
+        {
+            ScriptErrors = Array.ConvertAll(dollarError.ToArray(), o => o?.ToString() ?? "<null>");
+        }
     }
 
     internal void LogEnter(string methodName, object?[] args)
