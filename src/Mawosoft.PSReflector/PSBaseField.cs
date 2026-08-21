@@ -33,7 +33,8 @@ public sealed class PSBaseField : PSPropertyInfo, IPSBaseMemberInfo
         {
             if (!_canWrite) throw new MemberAccessException();
             var baseObject = _isStatic ? null : this.GetBaseObject();
-            _fieldInfo.SetValue(baseObject, value);
+            var convertedValue = LanguagePrimitives.ConvertTo(value, _fieldInfo.FieldType);
+            _fieldInfo.SetValue(baseObject, convertedValue);
         }
     }
 

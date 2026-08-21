@@ -1,0 +1,8 @@
+# Project-specific config
+
+is_global = true
+#global_level = 100
+
+# CA1305: Specify IFormatProvider
+# SMA provides its own default, which we want to use.
+dotnet_code_quality.CA1305.excluded_symbol_names = T:System.Management.Automation.LanguagePrimitives
