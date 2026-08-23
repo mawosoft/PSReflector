@@ -26,6 +26,7 @@
             Tags                     = @('PSEdition_Desktop', 'PSEdition_Core', 'Reflection', 'Class')
             LicenseUri               = 'https://github.com/mawosoft/PSReflector/blob/master/LICENSE'
             ProjectUri               = 'https://github.com/mawosoft/PSReflector'
+            ReleaseNotes             = 'https://github.com/mawosoft/PSReflector/releases'
             Prerelease               = '@Prerelease@'
             RequireLicenseAcceptance = $false
         }
