@@ -17,6 +17,10 @@
     <TestingPlatformCaptureOutput>false</TestingPlatformCaptureOutput>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(CI)' != 'false'">
+    <Compile Remove="**/DebuggerAwareTestFramework.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/Mawosoft.PSReflector/Mawosoft.PSReflector.csproj" />
     <ProjectReference Include="../Mawosoft.PSReflector.TestTypes/Mawosoft.PSReflector.TestTypes.csproj" />

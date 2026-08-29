@@ -12,6 +12,8 @@ namespace Mawosoft.PSReflector;
 
 public class ReflectorRegisterTests
 {
+    private const string TestMember = nameof(TestMember);
+
     [Fact]
     public void ByMemberInfo_Succeeds()
     {
@@ -177,7 +179,7 @@ public class ReflectorRegisterTests
             types,
             [new("Mawosoft.PSReflector.TestTypes.IExplicitInterface.ExplicitMethod")
             {
-                PSName = "TestMember"
+                PSName = TestMember
             }]);
         Assert.Multiple(
             () =>
@@ -200,20 +202,19 @@ public class ReflectorRegisterTests
     {
         public SetsMemberName_TheoryData()
         {
-            const string psName = "TestMember";
             var type = typeof(SimpleClass);
             var mih = new MemberInfoHelper(type);
             MemberInfo mi = mih.GetConstructor([typeof(int), typeof(string)]);
             Add(type, type, mi, null, "new");
             Add(type, type, mi, "", "new");
-            Add(type, type, mi, psName, psName);
+            Add(type, type, mi, TestMember, TestMember);
             string[] names = ["Field", "Property", "Method1"];
             foreach (var name in names)
             {
                 mi = mih.GetMember(name);
                 Add(type, Activator.CreateInstance(type), mi, null, name);
                 Add(type, Activator.CreateInstance(type), mi, "", name);
-                Add(type, Activator.CreateInstance(type), mi, psName, psName);
+                Add(type, Activator.CreateInstance(type), mi, TestMember, TestMember);
             }
         }
     }

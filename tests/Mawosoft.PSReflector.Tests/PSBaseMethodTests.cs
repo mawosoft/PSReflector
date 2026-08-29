@@ -11,18 +11,18 @@ namespace Mawosoft.PSReflector;
 
 public class PSBaseMethodTests
 {
+    private const string TestMember = nameof(TestMember);
+    private const string DefaultMember = "Method1";
+
+    private static readonly string[] s_member =
+    [
+        "StaticMethod1", "StaticMethod2", "StaticMethod3", "StaticVoidMethod4",
+        "Method1", "Method2", "Method3", "VoidMethod4"
+    ];
+
     public static readonly TheoryData<Type> Type_TheoryData = [typeof(SimpleClass), typeof(SimpleStruct)];
-
-    public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)],
-        [null!, ""]);
-
-    public static readonly MatrixTheoryData<Type, string> Type_Member_MatrixData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)],
-        [
-            "StaticMethod1", "StaticMethod2", "StaticMethod3", "StaticVoidMethod4",
-            "Method1", "Method2", "Method3","VoidMethod4"
-        ]);
+    public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new([typeof(SimpleClass), typeof(SimpleStruct)], [null!, ""]);
+    public static readonly MatrixTheoryData<Type, string> Type_Member_MatrixData = new([typeof(SimpleClass), typeof(SimpleStruct)], s_member);
 
     private static bool IsStaticMemberName(string memberName)
         => memberName.StartsWith("Static", StringComparison.Ordinal);
@@ -41,7 +41,7 @@ public class PSBaseMethodTests
     public void Ctor_NullOrEmptyName_Defaults(Type type, string name)
     {
         var mih = new MemberInfoHelper(type);
-        var mi = mih.GetMethod("Method1");
+        var mi = mih.GetMethod(DefaultMember);
         var psm = new PSBaseMethod(mi, name);
         Assert.Equal(mi.Name, psm.Name);
     }
@@ -51,7 +51,7 @@ public class PSBaseMethodTests
     public void Ctor_SetsName(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var mi = mih.GetMethod("Method1");
+        var mi = mih.GetMethod(DefaultMember);
         var name = "Foo";
         var psm = new PSBaseMethod(mi, name);
         Assert.Equal(name, psm.Name);
@@ -77,7 +77,7 @@ public class PSBaseMethodTests
     public void Get_MemberType_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var mi = mih.GetMethod("Method1");
+        var mi = mih.GetMethod(DefaultMember);
         var psm = new PSBaseMethod(mi, null);
         Assert.Equal(PSMemberTypes.CodeMethod, psm.MemberType);
     }
@@ -87,7 +87,7 @@ public class PSBaseMethodTests
     public void Get_TypeNameOfValue_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var mi = mih.GetMethod("Method1");
+        var mi = mih.GetMethod(DefaultMember);
         var psm = new PSBaseMethod(mi, null);
         Assert.Equal(typeof(PSBaseMethod).FullName, psm.TypeNameOfValue);
     }
@@ -125,21 +125,21 @@ public class PSBaseMethodTests
     {
         var mih = new MemberInfoHelper(type);
         var mi = mih.GetMethod(memberName);
-        var psm = new PSBaseMethod(mi, "TestMember");
+        var psm = new PSBaseMethod(mi, TestMember);
         object? instance = Activator.CreateInstance(type);
         Assert.IsType(type, instance);
         var pso = Reflector.PSObjectAsPSObject2Delegate(instance, true);
         pso.Members.Add(psm);
-        var psm2 = pso.Methods["TestMember"];
+        var psm2 = pso.Methods[TestMember];
         Assert.Equal(psm, (IPSBaseMemberInfo)psm2, IPSBaseMemberInfoComparer.Instance);
         Assert.Same(instance, pso.BaseObject);
 
-        var (param, retval) = (memberName) switch
+        var (param, retval) = memberName[memberName.Length - 1] switch
         {
-            "StaticMethod1" or "Method1" => Invoker1(pso),
-            "StaticMethod2" or "Method2" => Invoker2(pso),
-            "StaticMethod3" or "Method3" => Invoker3(pso),
-            "StaticVoidMethod4" or "VoidMethod4" => Invoker4(pso),
+            '1' => Invoker1(pso),
+            '2' => Invoker2(pso),
+            '3' => Invoker3(pso),
+            '4' => Invoker4(pso),
             _ => throw new InvalidOperationException(),
         };
 
@@ -159,20 +159,23 @@ public class PSBaseMethodTests
 
         static (object[] param, object? retval) Invoker2(dynamic pso)
         {
-            int[] p1 = [1, 2, 3];
-            string retval = pso.TestMember(p1);
+            int p1 = 123;
+            var p1ref = new PSReference(p1);
+            string retval = pso.TestMember(p1ref);
+            Assert.Equal(p1 * 2, p1ref.Value);
             return ([p1], retval);
         }
         static (object[] param, object? retval) Invoker3(dynamic pso)
         {
             string[] p1 = ["foo", "bar", "buzz"];
-            string retval = pso.TestMember(p1);
+            string retval = pso.TestMember(p1[0], p1[1], p1[2]);
             return ([p1], retval);
         }
         static (object[] param, object? retval) Invoker4(dynamic pso)
         {
-            PSObject retval = pso.TestMember(42);
-            return ([42], retval);
+            int p1 = 42;
+            PSObject retval = pso.TestMember(p1);
+            return ([p1], retval);
         }
     }
 
@@ -183,7 +186,7 @@ public class PSBaseMethodTests
     public void Get_MemberInfo_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var mi = mih.GetMethod("Method1");
+        var mi = mih.GetMethod(DefaultMember);
         IPSBaseMemberInfo psbm = new PSBaseMethod(mi, null);
         Assert.Equal(mi, psbm.MemberInfo);
     }
@@ -213,7 +216,7 @@ public class PSBaseMethodTests
     public void Get_CanWrite_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var mi = mih.GetMethod("Method1");
+        var mi = mih.GetMethod(DefaultMember);
         IPSBaseMemberInfo psbm = new PSBaseMethod(mi, null);
         Assert.False(psbm.CanWrite);
     }
@@ -223,7 +226,7 @@ public class PSBaseMethodTests
     public void Reflector_Roundtrip_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var mi = mih.GetMethod("Method1");
+        var mi = mih.GetMethod(DefaultMember);
         IPSBaseMemberInfo psbm = new PSBaseMethod(mi, null);
         Assert.Null(psbm.Reflector);
         var rfl = new Reflector();
