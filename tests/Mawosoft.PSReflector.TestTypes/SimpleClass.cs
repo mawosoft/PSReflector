@@ -4,7 +4,8 @@ using System;
 
 namespace Mawosoft.PSReflector.TestTypes;
 
-// Members must match SimpleStruct
+// SimpleClass and SimpleStruct have the same members.
+
 public class SimpleClass : ILastCallInfoProvider, IMemberAccessor
 {
     internal const int ConstField = 101;
@@ -14,15 +15,12 @@ public class SimpleClass : ILastCallInfoProvider, IMemberAccessor
     [ThreadStatic] private static int s_staticReadonlyProperty;
     [ThreadStatic] private static int s_staticProperty;
 
-    internal static int StaticReadOnlyProperty
-    {
-        get { LastCallInfoStatic2 = new CallInfo([]); return s_staticReadonlyProperty; }
-    }
+    internal static int StaticReadOnlyProperty => s_staticReadonlyProperty;
 
     internal static int StaticProperty
     {
-        get { LastCallInfoStatic2 = new CallInfo([]); return s_staticProperty; }
-        set { LastCallInfoStatic2 = new CallInfo([value]); s_staticProperty = value; }
+        get => s_staticProperty;
+        set => s_staticProperty = value;
     }
 
     internal readonly int ReadOnlyField = 201;
@@ -31,82 +29,88 @@ public class SimpleClass : ILastCallInfoProvider, IMemberAccessor
     private int _readonlyProperty;
     private int _property;
 
-    internal int ReadOnlyProperty
-    {
-        get { LastCallInfo = new CallInfo([]); return _readonlyProperty; }
-    }
+    internal int ReadOnlyProperty => _readonlyProperty;
 
     internal int Property
     {
-        get { LastCallInfo = new CallInfo([]); return _property; }
-        set { LastCallInfo = new CallInfo([value]); _property = value; }
+        get => _property;
+        set => _property = value;
     }
 
     public SimpleClass() { }
-    internal SimpleClass(int p1, string p2) => LastCallInfo = new CallInfo([p1, p2]);
-    internal SimpleClass(int[] p1) => LastCallInfo = new CallInfo([p1]);
-    internal SimpleClass(params string[] p1) => LastCallInfo = new CallInfo([p1]);
+
+    internal SimpleClass(int p1, string p2) => LastCallInfo = new LoggedCallInfo([p1, p2]);
+
+    internal SimpleClass(ref int p1)
+    {
+        LastCallInfo = new LoggedCallInfo([p1]);
+        p1 *= 2;
+    }
+
+    internal SimpleClass(params string[] p1) => LastCallInfo = new LoggedCallInfo([p1]);
 
     internal static string StaticMethod1(int p1, string p2)
     {
-        LastCallInfoStatic2 = new CallInfo([p1, p2]);
+        LastCallInfoStatic2 = new LoggedCallInfo([p1, p2]);
         return LastCallInfoStatic2.MemberName;
     }
 
-    internal static string StaticMethod2(int[] p1)
+    internal static string StaticMethod2(ref int p1)
     {
-        LastCallInfoStatic2 = new CallInfo([p1]);
+        LastCallInfoStatic2 = new LoggedCallInfo([p1]);
+        p1 *= 2;
         return LastCallInfoStatic2.MemberName;
     }
 
     internal static string StaticMethod3(params string[] p1)
     {
-        LastCallInfoStatic2 = new CallInfo([p1]);
+        LastCallInfoStatic2 = new LoggedCallInfo([p1]);
         return LastCallInfoStatic2.MemberName;
     }
 
     internal static void StaticVoidMethod4(int p1)
     {
-        LastCallInfoStatic2 = new CallInfo([p1]);
+        LastCallInfoStatic2 = new LoggedCallInfo([p1]);
     }
 
     internal string Method1(int p1, string p2)
     {
-        LastCallInfo = new CallInfo([p1, p2]);
+        LastCallInfo = new LoggedCallInfo([p1, p2]);
         return LastCallInfo.MemberName;
     }
 
-    internal string Method2(int[] p1)
+    internal string Method2(ref int p1)
     {
-        LastCallInfo = new CallInfo([p1]);
+        LastCallInfo = new LoggedCallInfo([p1]);
+        p1 *= 2;
         return LastCallInfo.MemberName;
     }
 
     internal string Method3(params string[] p1)
     {
-        LastCallInfo = new CallInfo([p1]);
+        LastCallInfo = new LoggedCallInfo([p1]);
         return LastCallInfo.MemberName;
     }
 
     internal void VoidMethod4(int p1)
     {
-        LastCallInfo = new CallInfo([p1]);
+        LastCallInfo = new LoggedCallInfo([p1]);
     }
 
     // ILastCallInfoProvider
 
     [ThreadStatic]
-    private static CallInfo? s_lastCallInfoStatic;
+    private static LoggedCallInfo? s_lastCallInfoStatic;
 
-    public static CallInfo? LastCallInfoStatic2
+    public static LoggedCallInfo? LastCallInfoStatic2
     {
         get => s_lastCallInfoStatic;
         set => s_lastCallInfoStatic = value;
     }
 
-    public CallInfo? LastCallInfo { get; set; }
+    public LoggedCallInfo? LastCallInfo { get; set; }
 
-    public CallInfo? LastCallInfoStatic
+    public LoggedCallInfo? LastCallInfoStatic
     {
         get => s_lastCallInfoStatic;
         set => s_lastCallInfoStatic = value;

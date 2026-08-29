@@ -6,4 +6,32 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <SourceGenInput>$(MSBuildThisFileDirectory)SimpleClass.cs</SourceGenInput>
+    <SourceGenOutput>$(MSBuildThisFileDirectory)SimpleStruct.g.cs</SourceGenOutput>
+    <SourceGenScript>$(MSBuildThisFileDirectory)sourcegen.ps1</SourceGenScript>
+  </PropertyGroup>
+
+  <Target Name="SourceGen"
+          Inputs="$(SourceGenInput);$(SourceGenScript)"
+          Outputs="$(SourceGenOutput)"
+          BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_command>pwsh -NonInteractive -NoProfile -ExecutionPolicy Bypass -Command  &quot;&amp;
+        '$(SourceGenScript)'
+        -Path '$(SourceGenInput)'
+        -Destination '$(SourceGenOutput)'
+      &quot;
+      </_command>
+    </PropertyGroup>
+    <Exec Command="$(_command.Replace('%0D%0A', ' ').Replace('%0A', ' '))"
+          WorkingDirectory = "$(MSBuildThisFileDirectory)"
+          StandardErrorImportance="high"
+          StandardOutputImportance="low" />
+    <ItemGroup>
+      <Compile Remove="$([System.IO.Path]::GetFileName($(SourceGenOutput)))" />
+      <Compile Include="$(SourceGenOutput)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

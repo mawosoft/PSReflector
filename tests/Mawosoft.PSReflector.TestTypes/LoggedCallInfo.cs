@@ -4,14 +4,15 @@ using System.Runtime.CompilerServices;
 
 namespace Mawosoft.PSReflector.TestTypes;
 
-public sealed class CallInfo
+// Note: Named 'LoggedCallInfo' to avoid confusion with System.Dynamic.CallInfo.
+public sealed class LoggedCallInfo
 {
     public object?[]? Arguments { get; }
     public string MemberName { get; }
     public string FilePath { get; }
     public int LineNumber { get; }
 
-    public CallInfo(
+    public LoggedCallInfo(
         object?[]? arguments,
         [CallerMemberName] string? memberName = null,
         [CallerFilePath] string? filePath = null,
