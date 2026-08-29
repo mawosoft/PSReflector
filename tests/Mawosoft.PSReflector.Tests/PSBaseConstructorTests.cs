@@ -10,11 +10,12 @@ namespace Mawosoft.PSReflector;
 
 public class PSBaseConstructorTests
 {
-    public static readonly TheoryData<Type> Type_TheoryData = [typeof(SimpleClass), typeof(SimpleStruct)];
+    private const string TestMember = nameof(TestMember);
 
-    public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)],
-        [null!, ""]);
+    private static readonly Type[] s_defaultMemberParam = [typeof(int), typeof(string)];
+
+    public static readonly TheoryData<Type> Type_TheoryData = [typeof(SimpleClass), typeof(SimpleStruct)];
+    public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new([typeof(SimpleClass), typeof(SimpleStruct)], [null!, ""]);
 
     [Fact]
     public void Ctor_NullInfo_Throws()
@@ -27,7 +28,7 @@ public class PSBaseConstructorTests
     public void Ctor_NullOrEmptyName_Defaults(Type type, string name)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         var psm = new PSBaseConstructor(ci, name);
         Assert.Equal("new", psm.Name);
     }
@@ -37,7 +38,7 @@ public class PSBaseConstructorTests
     public void Ctor_SetsName(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         var name = "Foo";
         var psm = new PSBaseConstructor(ci, name);
         Assert.Equal(name, psm.Name);
@@ -48,7 +49,7 @@ public class PSBaseConstructorTests
     public void Get_OverloadDefinitions_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         var psm = new PSBaseConstructor(ci, null);
         Assert.Equal(ci.ToString(), Assert.Single(psm.OverloadDefinitions));
     }
@@ -58,7 +59,7 @@ public class PSBaseConstructorTests
     public void Get_MemberType_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         var psm = new PSBaseConstructor(ci, null);
         Assert.Equal(PSMemberTypes.CodeMethod, psm.MemberType);
     }
@@ -68,7 +69,7 @@ public class PSBaseConstructorTests
     public void Get_TypeNameOfValue_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         var psm = new PSBaseConstructor(ci, null);
         Assert.Equal(typeof(PSBaseConstructor).FullName, psm.TypeNameOfValue);
     }
@@ -78,7 +79,7 @@ public class PSBaseConstructorTests
     public void ToString_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         var psm = new PSBaseConstructor(ci, null);
         Assert.Equal(ci.ToString(), psm.ToString());
     }
@@ -88,7 +89,7 @@ public class PSBaseConstructorTests
     public void Copy_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         var psm = new PSBaseConstructor(ci, null);
         var psm2 = psm.Copy();
         Assert.NotSame(psm, psm2);
@@ -108,16 +109,18 @@ public class PSBaseConstructorTests
             },
             () =>
             {
-                dynamic pso = Setup(type, [typeof(int[])]);
-                int[] p1 = [1, 2, 3];
-                object? instance = pso.TestMember(p1);
+                dynamic pso = Setup(type, [typeof(int).MakeByRefType()]);
+                int p1 = 123;
+                var p1ref = new PSReference(p1);
+                object? instance = pso.TestMember(p1ref);
+                Assert.Equal(p1 * 2, p1ref.Value);
                 Verify(type, instance, [p1]);
             },
             () =>
             {
                 dynamic pso = Setup(type, [typeof(string[])]);
                 string[] p1 = ["foo", "bar", "buzz"];
-                object? instance = pso.TestMember(p1);
+                object? instance = pso.TestMember(p1[0], p1[1], p1[2]);
                 Verify(type, instance, [p1]);
             });
 
@@ -125,10 +128,10 @@ public class PSBaseConstructorTests
         {
             var mih = new MemberInfoHelper(type);
             var ci = mih.GetConstructor(paramTypes);
-            var psm = new PSBaseConstructor(ci, "TestMember");
+            var psm = new PSBaseConstructor(ci, TestMember);
             var pso = Reflector.PSObjectAsPSObject2Delegate(type, true);
             pso.Members.Add(psm);
-            var psm2 = pso.Methods["TestMember"];
+            var psm2 = pso.Methods[TestMember];
             Assert.Equal(psm, (IPSBaseMemberInfo)psm2, IPSBaseMemberInfoComparer.Instance);
             return pso;
         }
@@ -149,7 +152,7 @@ public class PSBaseConstructorTests
     public void Get_MemberInfo_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         IPSBaseMemberInfo psbm = new PSBaseConstructor(ci, null);
         Assert.Equal(ci, psbm.MemberInfo);
     }
@@ -159,7 +162,7 @@ public class PSBaseConstructorTests
     public void Get_ReturnType_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         IPSBaseMemberInfo psbm = new PSBaseConstructor(ci, null);
         Assert.Equal(type, psbm.ReturnType);
     }
@@ -169,7 +172,7 @@ public class PSBaseConstructorTests
     public void Get_IsStatic_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         IPSBaseMemberInfo psbm = new PSBaseConstructor(ci, null);
         Assert.False(psbm.IsStatic);
     }
@@ -179,7 +182,7 @@ public class PSBaseConstructorTests
     public void Get_CanWrite_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         IPSBaseMemberInfo psbm = new PSBaseConstructor(ci, null);
         Assert.False(psbm.CanWrite);
     }
@@ -189,7 +192,7 @@ public class PSBaseConstructorTests
     public void Reflector_Roundtrip_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var ci = mih.GetConstructor([typeof(int), typeof(string)]);
+        var ci = mih.GetConstructor(s_defaultMemberParam);
         IPSBaseMemberInfo psbm = new PSBaseConstructor(ci, null);
         Assert.Null(psbm.Reflector);
         var rfl = new Reflector();

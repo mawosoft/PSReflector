@@ -3,9 +3,6 @@
 is_global = true
 #global_level = 100
 
-# CA5394: Do not use insecure randomness
-dotnet_diagnostic.CA5394.severity = silent
-
 # Common settings for test projects
 
 # CA1034: Nested types should not be visible

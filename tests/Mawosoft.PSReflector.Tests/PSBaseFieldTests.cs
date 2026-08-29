@@ -10,46 +10,36 @@ namespace Mawosoft.PSReflector;
 
 public class PSBaseFieldTests
 {
+    private const string TestMember = nameof(TestMember);
+    private const string DefaultMember = "Field";
+
+    private static readonly string[] s_readOnlyMember = ["ConstField", "StaticReadOnlyField", "ReadOnlyField"];
+    private static readonly string[] s_readWriteMember = ["StaticField", "Field"];
+
     public static readonly TheoryData<Type> Type_TheoryData = [typeof(SimpleClass), typeof(SimpleStruct)];
-
-    public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)],
-        [null!, ""]);
-
-    public static readonly MatrixTheoryData<Type, bool, string> Type_Bool_ReadWriteMember_MatrixData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)],
-        [true, false],
-        ["StaticField", "Field"]);
-
-    public static readonly MatrixTheoryData<Type, string> Type_Member_MatrixData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)],
-        ["ConstField", "StaticReadOnlyField", "StaticField", "ReadOnlyField", "Field"]);
-
-    public static readonly MatrixTheoryData<Type, string> Type_ReadOnlyMember_MatrixData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)],
-        ["ConstField", "StaticReadOnlyField", "ReadOnlyField"]);
-
-    public static readonly MatrixTheoryData<Type, string> Type_ReadWriteMember_MatrixData = new(
-        [typeof(SimpleClass), typeof(SimpleStruct)],
-        ["StaticField", "Field"]);
+    public static readonly MatrixTheoryData<Type, string> Type_NullEmpty_MatrixData = new([typeof(SimpleClass), typeof(SimpleStruct)], [null!, ""]);
+    public static readonly MatrixTheoryData<Type, bool, string> Type_Bool_ReadWriteMember_MatrixData = new([typeof(SimpleClass), typeof(SimpleStruct)], [true, false], s_readWriteMember);
+    public static readonly MatrixTheoryData<Type, string> Type_Member_MatrixData = new([typeof(SimpleClass), typeof(SimpleStruct)], [.. s_readOnlyMember, .. s_readWriteMember]);
+    public static readonly MatrixTheoryData<Type, string> Type_ReadOnlyMember_MatrixData = new([typeof(SimpleClass), typeof(SimpleStruct)], s_readOnlyMember);
+    public static readonly MatrixTheoryData<Type, string> Type_ReadWriteMember_MatrixData = new([typeof(SimpleClass), typeof(SimpleStruct)], s_readWriteMember);
 
     private static bool IsStaticMemberName(string memberName)
         => memberName.StartsWith("Const", StringComparison.Ordinal)
            || memberName.StartsWith("Static", StringComparison.Ordinal);
 
     private static bool IsReadOnlyMemberName(string memberName)
-        => memberName.Contains("ReadOnly", StringComparison.Ordinal);
+        => Array.IndexOf(s_readOnlyMember, memberName) >= 0;
 
     private static PSObject SetupTestMember(Type type, string memberName)
     {
         var mih = new MemberInfoHelper(type);
         var fi = mih.GetField(memberName);
-        var psm = new PSBaseField(fi, "TestMember", true);
+        var psm = new PSBaseField(fi, TestMember, true);
         object? instance = Activator.CreateInstance(type);
         Assert.IsType(type, instance);
         var pso = Reflector.PSObjectAsPSObject2Delegate(instance, true);
         pso.Members.Add(psm);
-        var psm2 = pso.Properties["TestMember"];
+        var psm2 = pso.Properties[TestMember];
         Assert.Equal(psm, (IPSBaseMemberInfo)psm2, IPSBaseMemberInfoComparer.Instance);
         Assert.Same(instance, pso.BaseObject);
         return pso;
@@ -66,7 +56,7 @@ public class PSBaseFieldTests
     public void Ctor_NullOrEmptyName_Defaults(Type type, string name)
     {
         var mih = new MemberInfoHelper(type);
-        var fi = mih.GetField("Field");
+        var fi = mih.GetField(DefaultMember);
         var psm = new PSBaseField(fi, name, false);
         Assert.Equal(fi.Name, psm.Name);
     }
@@ -77,7 +67,7 @@ public class PSBaseFieldTests
     {
         var name = "Foo";
         var mih = new MemberInfoHelper(type);
-        var fi = mih.GetField("Field");
+        var fi = mih.GetField(DefaultMember);
         var psm = new PSBaseField(fi, name, false);
         Assert.Equal(name, psm.Name);
     }
@@ -122,7 +112,7 @@ public class PSBaseFieldTests
     public void Get_MemberType_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var fi = mih.GetField("Field");
+        var fi = mih.GetField(DefaultMember);
         var psm = new PSBaseField(fi, null, false);
         Assert.Equal(PSMemberTypes.CodeProperty, psm.MemberType);
     }
@@ -182,29 +172,27 @@ public class PSBaseFieldTests
 
     [Theory]
     [MemberData(nameof(Type_ReadWriteMember_MatrixData))]
-    public void Value_Roundtrip_Succeeds(Type type, string memberName)
+    public void Set_Value_Succeeds(Type type, string memberName)
     {
         PSObject pso = SetupTestMember(type, memberName);
         dynamic dynpso = pso;
         var accessor = Assert.IsType<IMemberAccessor>(pso.BaseObject, exactMatch: false);
-
-        int expected = accessor.SetMemberValue(memberName, 0);
-        int actual = dynpso.TestMember;
-        Assert.Equal(expected, actual);
-
-        expected = 42;
-        dynpso.TestMember = expected;
-        actual = accessor.GetMemberValue<int>(memberName);
-        Assert.Equal(expected, actual);
-        actual = dynpso.TestMember;
-        Assert.Equal(expected, actual);
-
-        expected = 0;
-        dynpso.TestMember = expected;
-        actual = accessor.GetMemberValue<int>(memberName);
-        Assert.Equal(expected, actual);
-        actual = dynpso.TestMember;
-        Assert.Equal(expected, actual);
+        Assert.Equal(0, accessor.SetMemberValue(memberName, 0));
+        Assert.Multiple(
+            () =>
+            {
+                int expected = 42;
+                dynpso.TestMember = expected;
+                int actual = accessor.GetMemberValue<int>(memberName);
+                Assert.Equal(expected, actual);
+            },
+            () =>
+            {
+                int expected = 24;
+                dynpso.TestMember = $"{expected}";
+                int actual = accessor.GetMemberValue<int>(memberName);
+                Assert.Equal(expected, actual);
+            });
     }
 
     [Theory]
@@ -256,7 +244,7 @@ public class PSBaseFieldTests
     public void Reflector_Roundtrip_Succeeds(Type type)
     {
         var mih = new MemberInfoHelper(type);
-        var fi = mih.GetField("Field");
+        var fi = mih.GetField(DefaultMember);
         IPSBaseMemberInfo psbm = new PSBaseField(fi, null, false);
         Assert.Null(psbm.Reflector);
         var rfl = new Reflector();
