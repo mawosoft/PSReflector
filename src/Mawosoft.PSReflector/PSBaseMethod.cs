@@ -11,6 +11,7 @@ namespace Mawosoft.PSReflector;
 public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
 {
     private readonly MethodInfo _methodInfo;
+    private readonly ArgumentProcessor _argumentProcessor;
     private readonly bool _isStatic;
     private Reflector? _reflector;
 
@@ -21,8 +22,10 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
 
     public override object? Invoke(params object[] arguments)
     {
+        var processedArguments = _argumentProcessor.PreProcess(arguments, out bool postProcess);
         var baseObject = _isStatic ? null : this.GetBaseObject();
-        var retval = _methodInfo.Invoke(baseObject, arguments);
+        var retval = _methodInfo.Invoke(baseObject, processedArguments);
+        if (postProcess) _argumentProcessor.PostProcess(processedArguments, arguments);
         return _methodInfo.ReturnType == typeof(void)
             ? AutomationNull.Value
             : _reflector is null ? retval : _reflector.Expose(retval);
@@ -35,6 +38,7 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
         ArgumentNullException.ThrowIfNull(info);
         SetMemberName(string.IsNullOrEmpty(name) ? info.Name : name);
         _methodInfo = info;
+        _argumentProcessor = new ArgumentProcessor(info);
         _isStatic = info.IsStatic;
     }
 
@@ -42,6 +46,7 @@ public sealed class PSBaseMethod : PSMethodInfo, IPSBaseMemberInfo
     {
         SetMemberName(other.Name);
         _methodInfo = other._methodInfo;
+        _argumentProcessor = other._argumentProcessor;
         _isStatic = other._isStatic;
         _reflector = other._reflector;
     }

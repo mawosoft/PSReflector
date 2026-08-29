@@ -10,6 +10,7 @@ namespace Mawosoft.PSReflector;
 public sealed class PSBaseConstructor : PSMethodInfo, IPSBaseMemberInfo
 {
     private readonly ConstructorInfo _ctorInfo;
+    private readonly ArgumentProcessor _argumentProcessor;
     private Reflector? _reflector;
 
     public override Collection<string> OverloadDefinitions => [ToString()];
@@ -19,7 +20,9 @@ public sealed class PSBaseConstructor : PSMethodInfo, IPSBaseMemberInfo
 
     public override object? Invoke(params object[] arguments)
     {
-        var retval = _ctorInfo.Invoke(arguments);
+        var processedArguments = _argumentProcessor.PreProcess(arguments, out bool postProcess);
+        var retval = _ctorInfo.Invoke(processedArguments);
+        if (postProcess) _argumentProcessor.PostProcess(processedArguments, arguments);
         return _reflector is null ? retval : _reflector.Expose(retval);
     }
 
@@ -30,12 +33,14 @@ public sealed class PSBaseConstructor : PSMethodInfo, IPSBaseMemberInfo
         ArgumentNullException.ThrowIfNull(info);
         SetMemberName(string.IsNullOrEmpty(name) ? "new" : name);
         _ctorInfo = info;
+        _argumentProcessor = new ArgumentProcessor(info);
     }
 
     private PSBaseConstructor(PSBaseConstructor other)
     {
         SetMemberName(other.Name);
         _ctorInfo = other._ctorInfo;
+        _argumentProcessor = other._argumentProcessor;
         _reflector = other._reflector;
     }
 
