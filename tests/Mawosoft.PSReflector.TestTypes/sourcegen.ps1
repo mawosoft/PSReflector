@@ -27,7 +27,7 @@ namespace Mawosoft.PSReflector.TestTypes;
 $content = $original
 $content = [regex]::Replace($content, '\bclass\s+SimpleClass\b', 'struct SimpleStruct')
 $content = [regex]::Replace($content, '(?<=\b(public|internal)\s+)SimpleClass\b', 'SimpleStruct')
-$content = [regex]::Replace($content, '\bpublic\s+CallInfo\?\s+LastCallInfoStatic\b', 'public readonly CallInfo? LastCallInfoStatic')
+$content = [regex]::Replace($content, '\bpublic\s+LoggedCallInfo\?\s+LastCallInfoStatic\b', 'public readonly LoggedCallInfo? LastCallInfoStatic')
 $null = $sb.Append($content)
 
 [System.IO.File]::WriteAllText($Destination, $sb.ToString())
