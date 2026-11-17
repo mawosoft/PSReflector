@@ -1,6 +1,12 @@
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 
 version: 2
+
+multi-ecosystem-groups:
+  dotnet-nuget:
+    schedule:
+      interval: "weekly"
+
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -11,11 +17,17 @@ updates:
         patterns: 
           - '*'
   - package-ecosystem: "nuget"
-    directories:
-      - "/"
-    schedule:
-      interval: "weekly"
-    groups:
-      nuget-dependencies:
-        patterns:
-          - '*'
+    directory: "/"
+    multi-ecosystem-group: dotnet-nuget
+    patterns: ["*"]
+    ignore:
+      - dependency-name: "System.Management.Automation"
+        update-types: ["version-update:semver-minor"]
+  - package-ecosystem: "dotnet-sdk"
+    directory: "/"
+    multi-ecosystem-group: dotnet-nuget
+    patterns: ["*"]
+    ignore:
+      - dependency-name: "dotnet-sdk"
+        update-types: ["version-update:semver-major"]
+  
